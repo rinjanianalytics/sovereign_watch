@@ -4,7 +4,9 @@
 
 ## 1. Project Context
 **Sovereign Watch** is a distributed intelligence fusion platform.
-- **Frontend**: React (Vite), Tailwind CSS, Mapbox/Deck.gl (in `frontend/`)
+- **Frontend**: React (Vite), Tailwind CSS.
+  - **Mapping**: Hybrid Architecture supporting **Mapbox GL JS** OR **MapLibre GL JS** (dynamic import based on env), overlaid with **Deck.gl** v9.
+  - Source: `frontend/src/components/map/TacticalMap.tsx`
 - **Backend**: FastAPI (Python), Redpanda Connect (in `backend/api/` and `backend/ingestion/`)
 - **Infrastructure**: Docker Compose, localized dev environment.
 
