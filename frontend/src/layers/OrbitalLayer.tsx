@@ -1,6 +1,5 @@
 import { ScatterplotLayer, PathLayer, IconLayer, TextLayer } from '@deck.gl/layers';
 import { CoTEntity } from '../types';
-import { chaikinSmooth } from '../utils/map/geoUtils';
 
 const createSatIconAtlas = () => {
     const canvas = document.createElement('canvas');
@@ -128,12 +127,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
                 id: `satellite-ground-track${sfx}`,
                 data: satellites,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getPath: (d: any) => {
-                    if (!d.trail || d.trail.length < 2) return [];
-                    const raw = d.trail.map((p: any) => [p[0], p[1], p[2]]);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    return chaikinSmooth(raw) as any;
-                },
+                getPath: (d: any) => d.smoothedTrail || [],
                 getColor: (d: CoTEntity) => getSatColor(d.detail?.category as string, Math.floor(255 * 0.3)),
                 getWidth: 3.5,
                 widthMinPixels: 2.5,

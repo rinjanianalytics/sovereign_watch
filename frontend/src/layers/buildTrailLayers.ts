@@ -5,7 +5,7 @@ import {
   speedToColor,
   entityColor,
 } from "../utils/map/colorUtils";
-import { chaikinSmooth, getDistanceMeters } from "../utils/map/geoUtils";
+import { getDistanceMeters } from "../utils/map/geoUtils";
 
 export function buildTrailLayers(
   interpolated: CoTEntity[],
@@ -27,11 +27,7 @@ export function buildTrailLayers(
             (!currentSelected || e.uid !== currentSelected.uid),
         ),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getPath: (d: any) => {
-          if (!d.trail || d.trail.length < 2) return [];
-          const raw = d.trail.map((p: any) => [p[0], p[1], p[2]]);
-          return chaikinSmooth(raw);
-        },
+        getPath: (d: any) => d.smoothedTrail || [],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         getColor: (d: any) => {
           const isShip = d.type.includes("S");
@@ -87,10 +83,8 @@ export function buildTrailLayers(
   // 2. Selected Entity Highlight Trail
   if (currentSelected && interpolated.find((e) => e.uid === currentSelected.uid)) {
     const entity = interpolated.find((e) => e.uid === currentSelected.uid)!;
-    if (entity.trail && entity.trail.length >= 2) {
-      const trailPath = chaikinSmooth(
-        entity.trail.map((p) => [p[0], p[1], p[2]]),
-      );
+    if (entity.smoothedTrail && entity.smoothedTrail.length >= 2) {
+      const trailPath = entity.smoothedTrail;
 
       const isShip = entity.type.includes("S");
       const trailColor = isShip

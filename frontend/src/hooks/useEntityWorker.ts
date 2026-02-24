@@ -1,7 +1,15 @@
 import { useEffect, useRef, MutableRefObject } from "react";
 import { CoTEntity, TrailPoint } from "../types";
-import { getDistanceMeters, getBearing, uidToHash } from "../utils/map/geoUtils";
+import { getDistanceMeters, getBearing, uidToHash, chaikinSmooth } from "../utils/map/geoUtils";
 import type { EntityClassification } from "../types";
+
+/** Helper to compute or reuse smoothed trail geometry */
+const getSmoothedTrail = (trail: TrailPoint[], existing?: CoTEntity) => {
+  if (existing?.smoothedTrail && existing.trail === trail) {
+    return existing.smoothedTrail;
+  }
+  return trail.length >= 2 ? chaikinSmooth(trail.map(p => [p[0], p[1], p[2]])) : [];
+};
 
 export interface DeadReckoningState {
   serverLat: number;
@@ -155,6 +163,7 @@ export function useEntityWorker({
             lastSeen: Date.now(),
             time: entity.time,
             trail,
+            smoothedTrail: getSmoothedTrail(trail, existing),
             uidHash: existing ? existing.uidHash : uidToHash(entity.uid),
           };
 
@@ -306,6 +315,7 @@ export function useEntityWorker({
           lastSourceTime: entity.time || existingEntity?.lastSourceTime,
           lastSeen: Date.now(),
           trail,
+          smoothedTrail: getSmoothedTrail(trail, existingEntity),
           uidHash: 0, // Will be set below
           raw: updateData.raw, // Map raw hex from worker
           classification: classification
