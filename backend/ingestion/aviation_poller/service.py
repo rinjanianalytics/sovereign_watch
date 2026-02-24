@@ -22,6 +22,9 @@ CENTER_LAT = float(os.getenv("CENTER_LAT", "45.5152"))
 CENTER_LON = float(os.getenv("CENTER_LON", "-122.6784"))
 COVERAGE_RADIUS_NM = int(os.getenv("COVERAGE_RADIUS_NM", "150"))
 
+# Cleanup config
+ARBITRATION_CLEANUP_INTERVAL = int(os.getenv("ARBITRATION_CLEANUP_INTERVAL", "30"))
+
 logger = logging.getLogger("poller_service")
 
 class PollerService:
@@ -181,6 +184,10 @@ class PollerService:
         
         # Start one independent loop per source
         tasks = []
+
+        # Add background cleanup task
+        tasks.append(asyncio.create_task(self.cleanup_loop()))
+
         for i in range(len(self.poller.sources)):
             # Stagger loop starts slightly to prevent bursty network traffic
             # and synchronized multi-source updates for the same plane.
@@ -189,6 +196,27 @@ class PollerService:
             
         # Wait for all (they run until self.running is False)
         await asyncio.gather(*tasks)
+
+    async def cleanup_loop(self):
+        """Background task to periodically evict stale arbitration entries."""
+        logger.info(f"Starting arbitration cleanup loop (interval: {ARBITRATION_CLEANUP_INTERVAL}s)")
+        while self.running:
+            try:
+                await asyncio.sleep(ARBITRATION_CLEANUP_INTERVAL)
+                if not self.running:
+                    break
+
+                start = time.time()
+                self.arbitrator.evict_stale_entries()
+                elapsed = time.time() - start
+
+                # Only log if it takes a significant amount of time (>10ms)
+                if elapsed > 0.01:
+                    logger.debug(f"Eviction took {elapsed:.4f}s")
+
+            except Exception as e:
+                logger.error(f"Error in cleanup loop: {e}")
+                await asyncio.sleep(5)  # Backoff on error
 
     async def staggered_start(self, source_idx: int, delay: float):
         """Wait before starting the source loop to stagger update bursts."""
@@ -201,9 +229,6 @@ class PollerService:
             return
 
         logger.info(f"Received {len(aircraft)} aircraft from ({lat:.2f}, {lon:.2f})")
-
-        # Evict stale arbitration entries periodically
-        self.arbitrator.evict_stale_entries()
 
         published = 0
         for ac in aircraft:
