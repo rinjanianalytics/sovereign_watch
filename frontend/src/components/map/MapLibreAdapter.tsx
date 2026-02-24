@@ -4,7 +4,14 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapAdapterProps } from './mapAdapterTypes';
 
 function DeckGLOverlay(props: any) {
-    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props, interleaved: false }));
+    const { globeMode, ...rest } = props;
+    const projection = globeMode ? 'globe' : 'mercator';
+    
+    // Key-based construction is handled by parent, but we ensure parameters are fresh
+    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ 
+        ...rest,
+        projection 
+    }));
 
     const isDeadRef = useRef(false);
     useEffect(() => {
@@ -15,12 +22,13 @@ function DeckGLOverlay(props: any) {
     useEffect(() => {
         if (overlay && overlay.setProps && !isDeadRef.current) {
             try {
-                overlay.setProps(props);
+                // Critical: Explicitly update projection along with other props
+                overlay.setProps({ ...rest, projection });
             } catch (e) {
                 console.debug('[DeckGLOverlay] Transitioning props...');
             }
         }
-    }, [props, overlay]);
+    }, [rest, projection, overlay]);
 
     const { onOverlayLoaded } = props;
     useEffect(() => {
@@ -48,8 +56,12 @@ const MapLibreAdapter = forwardRef<MapRef, MapAdapterProps>((props, ref) => {
             onContextMenu={onContextMenu}
             onClick={onClick}
             antialias={true}
+            projection={globeMode ? { type: 'globe' } : { type: 'mercator' }}
         >
-            <DeckGLOverlay {...deckProps} />
+            {(() => {
+                const { key: deckKey, ...restDeckProps } = (deckProps as any);
+                return <DeckGLOverlay key={deckKey} {...restDeckProps} />;
+            })()}
         </Map>
     );
 });

@@ -13,5 +13,7 @@ export interface MapAdapterProps {
         id: string;
         interleaved: boolean;
         onOverlayLoaded: (overlay: any) => void;
+        key?: string;
+        globeMode?: boolean;
     };
 }

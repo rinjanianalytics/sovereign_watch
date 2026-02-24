@@ -69,17 +69,19 @@ interface OrbitalLayerProps {
     hoveredEntity: CoTEntity | null;
     now: number;
     showHistoryTails: boolean;
+    projectionMode?: string; // Nuclear Sync: Appended to IDs to force buffer rebuilds
     onEntitySelect: (entity: CoTEntity | null) => void;
     onHover: (entity: CoTEntity | null, x: number, y: number) => void;
 }
 
-export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, now, showHistoryTails, onEntitySelect, onHover }: OrbitalLayerProps) {
+export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, now, showHistoryTails, projectionMode, onEntitySelect, onHover }: OrbitalLayerProps) {
     const R_EARTH_KM = 6371;
+    const sfx = projectionMode ? `-${projectionMode}` : '';
 
     return [
         // 1. Footprint Circle (underneath, only when selected/hovered)
         new ScatterplotLayer({
-            id: 'satellite-footprint',
+            id: `satellite-footprint${sfx}`,
             data: satellites.filter(s => s.uid === selectedEntity?.uid || s.uid === hoveredEntity?.uid),
             getPosition: (d: CoTEntity) => [d.lon, d.lat, 0],
             getRadius: (d: CoTEntity) => {
@@ -106,7 +108,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
 
         // 1b. Footprint Label — coverage diameter at north rim of circle
         new TextLayer({
-            id: 'satellite-footprint-label',
+            id: `satellite-footprint-label${sfx}`,
             data: satellites.filter(s => s.uid === selectedEntity?.uid || s.uid === hoveredEntity?.uid),
             getPosition: (d: CoTEntity) => {
                 const altKm = (d.altitude || 0) / 1000;
@@ -140,7 +142,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
         // 2. Ground Track (respects historyTails toggle, Chaikin-smoothed)
         ...(showHistoryTails ? [
             new PathLayer({
-                id: 'satellite-ground-track',
+                id: `satellite-ground-track${sfx}`,
                 data: satellites,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 getPath: (d: any) => {
@@ -161,7 +163,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
 
         // 3. Ground Dot (vertical projection of satellite to ground surface)
         new ScatterplotLayer({
-            id: 'satellite-ground-dot',
+            id: `satellite-ground-dot${sfx}`,
             data: satellites,
             getPosition: (d: CoTEntity) => [d.lon, d.lat, 0],
             getRadius: 3,
@@ -174,7 +176,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
 
         // 4. Satellite Markers (clickable — fires onEntitySelect for sidebar)
         new IconLayer({
-            id: 'satellite-markers',
+            id: `satellite-markers${sfx}`,
             data: satellites,
             getIcon: () => 'satellite',
             iconAtlas: SAT_ICON_ATLAS.url,

@@ -15,7 +15,7 @@ const BASEMAP_CONFIG: Record<string, boolean | string> = {
 };
 
 function DeckGLOverlay(props: any) {
-    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props, interleaved: false }));
+    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props }));
 
     const isDeadRef = useRef(false);
     useEffect(() => {
@@ -49,20 +49,10 @@ function DeckGLOverlay(props: any) {
 const MapboxAdapter = forwardRef<MapRef, MapAdapterProps & { mapboxAccessToken?: string }>((props, ref) => {
     const { viewState, onMove, onLoad, mapStyle, mapboxAccessToken, style, onContextMenu, onClick, globeMode, deckProps } = props;
 
-    const handleLoad = useCallback((evt: any) => {
-        const map = evt.target?.getMap?.() ?? evt.target;
-        if (map && typeof map.setConfigProperty === 'function') {
-            Object.entries(BASEMAP_CONFIG).forEach(([key, value]) => {
-                map.setConfigProperty('basemap', key, value);
-            });
-        }
-        onLoad(evt);
-    }, [onLoad]);
-
     return (
         <Map
             ref={ref}
-            onLoad={handleLoad}
+            onLoad={onLoad}
             {...viewState}
             onMove={onMove}
             mapStyle={mapStyle}
@@ -71,8 +61,16 @@ const MapboxAdapter = forwardRef<MapRef, MapAdapterProps & { mapboxAccessToken?:
             onContextMenu={onContextMenu}
             onClick={onClick}
             antialias={true}
+            projection={globeMode ? 'globe' : 'mercator'}
+            // Apply Standard Style config at init time to eliminate visual flash
+            config={{
+                basemap: BASEMAP_CONFIG
+            }}
         >
-            <DeckGLOverlay {...deckProps} />
+            {(() => {
+                const { key: deckKey, ...restDeckProps } = (deckProps as any);
+                return <DeckGLOverlay key={deckKey} {...restDeckProps} />;
+            })()}
         </Map>
     );
 });
