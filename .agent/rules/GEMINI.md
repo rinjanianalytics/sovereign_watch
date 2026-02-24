@@ -24,6 +24,7 @@ trigger: always_on
 
 - **Communication**: All inter-service pipelines must use **TAK Protocol V1 (Protobuf)** via `tak.proto`. No ad-hoc JSON.
 - **Rendering**: Hybrid Architecture (WebGL2 for visuals, WebGPU/Workers for compute). Do not downgrade to Leaflet.
+- **Frontend Stack**: React (Vite) + **Mapbox GL JS** OR **MapLibre GL JS** (dynamic import based on env) + **Deck.gl v9**.
 - **Ingestion**: Use Redpanda Connect (Benthos) preferentially over custom Python scripts.
 
 ### 3. Development Workflow (Live Code Updates)
@@ -56,7 +57,7 @@ docker compose up -d --build <service>
 
 ## CRITICAL: AGENT & SKILL PROTOCOL
 
-> **MANDATORY:** You MUST read the appropriate agent file and its skills BEFORE performing any implementation. This is the highest priority rule.
+> **MANDATORY:** Read `AGENTS.md` in the root directory for the high-level routing guide.
 
 ### 1. Modular Skill Loading Protocol
 
@@ -150,7 +151,7 @@ When user's prompt is NOT in English:
 
 ### 🗺️ System Map Read
 
-> 🔴 **MANDATORY:** Read `ARCHITECTURE.md` at session start to understand Agents, Skills, and Scripts.
+> 🔴 **MANDATORY:** Read `AGENTS.md` (root) and `ARCHITECTURE.md` (.agent) at session start.
 
 **Path Awareness:**
 
@@ -232,6 +233,7 @@ When user's prompt is NOT in English:
 
 - **Completion:** A task is NOT finished until `checklist.py` returns success.
 - **Reporting:** If it fails, fix the **Critical** blockers first (Security/Lint).
+- **Targeting:** Always specify the subdirectory (e.g., `checklist.py backend/api`) if working on a sub-project.
 
 **Available Scripts (10 active):**
 
@@ -248,7 +250,7 @@ When user's prompt is NOT in English:
 | `lighthouse_audit.py`      | performance-profiling | Before deploy       |
 | `playwright_runner.py`     | webapp-testing        | Before deploy       |
 
-> 🔴 **Agents & Skills can invoke ANY script** via `python .agent/skills/<skill>/scripts/<script>.py`
+> 🔴 **Agents & Skills can invoke ANY script** via `python .agent/skills/<skill>/scripts/<script>.py <directory>`
 
 ### 🎭 Gemini Mode Mapping
 
