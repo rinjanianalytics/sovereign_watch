@@ -9,6 +9,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- Standard pgvector is 'vector'. pgvectorscale is the new high-perf one.
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS ai CASCADE; -- often bundles vector/vectorscale functionality in some images
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- TABLE: tracks (High-velocity telemetry)
 CREATE TABLE IF NOT EXISTS tracks (
@@ -44,6 +45,8 @@ SELECT add_retention_policy('tracks', INTERVAL '24 hours');
 -- Indices
 CREATE INDEX IF NOT EXISTS ix_tracks_geom ON tracks USING GIST (geom);
 CREATE INDEX IF NOT EXISTS ix_tracks_entity_time ON tracks (entity_id, time DESC);
+CREATE INDEX IF NOT EXISTS ix_tracks_entity_id_trgm ON tracks USING gin (entity_id gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS ix_tracks_meta_callsign_trgm ON tracks USING gin ((meta->>'callsign') gin_trgm_ops);
 
 -- TABLE: intel_reports (Semantic Data)
 CREATE TABLE IF NOT EXISTS intel_reports (
