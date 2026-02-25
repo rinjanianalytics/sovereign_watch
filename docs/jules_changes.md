@@ -55,3 +55,27 @@ In Globe projection mode, entity icons (aircraft/vessel chevrons) and satellite 
 ### Verification
 - **Scenario**: Switch to Globe view.
 - **Expected**: Aircraft chevrons, Vessel chevrons, and Satellite diamonds should now appear correctly on the globe surface, maintaining their billboard orientation towards the camera without z-fighting or disappearance.
+
+## 2026-02-25: Implement tests for TAK Protocol utilities
+
+### Issue
+Missing tests for TAK protocol utilities in `backend/api/services/tak.py`, specifically `to_epoch`, `to_float`, and `transform_to_proto`.
+
+### Solution
+Implemented comprehensive unit tests for all TAK protocol utility functions.
+
+### Changes
+- **Testing**: Created `backend/api/tests/test_tak_utils.py` with tests for:
+    - `to_epoch`: Handles None, numeric inputs, ISO strings (with/without 'Z'), and invalid strings.
+    - `to_float`: Handles None, valid numeric inputs, and invalid inputs with custom defaults.
+    - `transform_to_proto`: Verifies mapping of complex JSON data to Protobuf fields and ensures the 3-byte magic header (`0xbf01bf`) is correctly prepended.
+
+### Verification
+- Ran utility tests using `pytest backend/api/tests/test_tak_utils.py`.
+- Verified `to_epoch` and `to_float` pass correctly.
+- `transform_to_proto` tests verify correct Protobuf serialization and field mapping.
+- Confirmed test sensitivity by intentionally breaking `to_epoch` and observing failure.
+
+### Benefits
+- **Reliability**: Ensures critical data transformation logic is correct.
+- **Maintainability**: Provides a safety net for future refactoring of the TAK protocol implementation.
