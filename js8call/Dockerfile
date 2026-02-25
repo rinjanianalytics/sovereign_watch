@@ -1,8 +1,6 @@
+# Base: ubuntu:24.04 (required for JS8Call 2.3.1+ Qt6/Glibc dependencies)
 # =============================================================================
-# Sovereign Watch – JS8Call Headless Radio Container
-# Base: ubuntu:22.04 (required for Qt5 LTS compatibility and glibc >= 2.35)
-# =============================================================================
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Prevent interactive prompts during apt operations
 ENV DEBIAN_FRONTEND=noninteractive
@@ -120,7 +118,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pulseaudio \
     pulseaudio-utils \
-    libasound2 \
+    libasound2t64 \
     libasound2-plugins \
     alsa-utils \
     && rm -rf /var/lib/apt/lists/*
@@ -140,7 +138,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #   numpy  – fast array ops for PCM sample processing
 #   scipy  – DSP filters used by kiwirecorder's audio pipeline
 #   ws4py  – WebSocket client used by kiwiclient to stream from KiwiSDR nodes
-RUN pip3 install --no-cache-dir numpy scipy ws4py
+RUN pip3 install --no-cache-dir --break-system-packages numpy scipy ws4py
 
 # Clone kiwiclient to /opt so it is available system-wide
 RUN git clone --depth 1 https://github.com/jks-prv/kiwiclient /opt/kiwiclient
@@ -152,18 +150,21 @@ RUN git clone --depth 1 https://github.com/jks-prv/kiwiclient /opt/kiwiclient
 # The deb is installed via dpkg; apt-get install -f resolves any missing
 # runtime deps that dpkg itself cannot fetch (e.g. hamlib, libfftw3).
 # -----------------------------------------------------------------------------
-RUN wget -q -O /tmp/js8call.deb \
-    "https://files.js8call.com/2.2.0/js8call_2.2.0_amd64.deb" \
-    && dpkg -i /tmp/js8call.deb || true \
-    && apt-get update \
-    && apt-get install -f -y \
-    && rm /tmp/js8call.deb \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget ca-certificates libhamlib-utils libqt5svg5 libusb-1.0-0 libportaudio2 libpulse0 \
+    libfftw3-double3 libqt6widgets6t64 libqt6multimedia6 libqt6network6t64 libqt6gui6t64 libqt6core6t64 libqt6serialport6 libqt6opengl6t64
+
+RUN wget -q -O /tmp/js8call.deb "https://github.com/js8call/js8call/releases/download/v2.3.1/js8call_2.3.1_amd64.deb" \
+    && dpkg -x /tmp/js8call.deb /opt/js8call_pkg \
+    && ln -s /opt/js8call_pkg/opt/js8call/bin/js8call /usr/bin/js8call \
+    && mkdir -p /root/.config && printf "[Main]\n[Configuration]\nTCPEnabled=true\nTCPServer=127.0.0.1\nTCPServerPort=2442\nAcceptTCPRequests=true\nMyCall=N0CALL\nMyGrid=CN85\n[MultiSettings]\n" > "/root/.config/JS8Call - KiwiSDR-Virtual.ini" \
+    && cp "/root/.config/JS8Call - KiwiSDR-Virtual.ini" /root/.config/JS8Call.ini \
+    && rm /tmp/js8call.deb && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
 # Layer 8: Python API middleware dependencies
 # -----------------------------------------------------------------------------
-RUN pip3 install --no-cache-dir \
+RUN pip3 install --no-cache-dir --break-system-packages \
     fastapi \
     "uvicorn[standard]" \
     pyjs8call \

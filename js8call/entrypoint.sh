@@ -33,6 +33,18 @@ set -euo pipefail
 log() { echo "[entrypoint] $(date -u '+%H:%M:%S') $*"; }
 
 # =============================================================================
+# CLEANUP – Remove stale lock files from previous runs
+# =============================================================================
+log "Cleaning up stale lock files..."
+rm -vf /tmp/.X99-lock /tmp/.X11-unix/X99 || true
+rm -vf /tmp/dbus-* || true
+rm -vf /run/dbus/pid /var/run/dbus/pid || true
+rm -rf /tmp/pulse-* || true
+if [ -d "${PULSE_RUNTIME_PATH:-/run/user/1000/pulse}" ]; then
+    rm -rf "${PULSE_RUNTIME_PATH:-/run/user/1000/pulse}"/* || true
+fi
+
+# =============================================================================
 # STEP 1 – D-Bus Session Bus
 #
 # WHY: D-Bus is an IPC mechanism required by:
@@ -47,13 +59,15 @@ log() { echo "[entrypoint] $(date -u '+%H:%M:%S') $*"; }
 # =============================================================================
 log "STEP 1: Starting D-Bus session bus..."
 
-# Ensure the runtime directory exists (used by dbus socket)
-mkdir -p "${XDG_RUNTIME_DIR:-/run/user/1000}"
-chmod 700 "${XDG_RUNTIME_DIR:-/run/user/1000}"
-
-eval "$(dbus-launch --sh-syntax --exit-with-session)"
+# Manual D-Bus startup is more robust than dbus-launch in some environments
+dbus-daemon --session --fork --print-address=1 --print-pid=1 > /tmp/dbus_info
+DBUS_SESSION_BUS_ADDRESS=$(head -n 1 /tmp/dbus_info)
+DBUS_SESSION_BUS_PID=$(tail -n 1 /tmp/dbus_info)
 export DBUS_SESSION_BUS_ADDRESS
-log "D-Bus session bus: ${DBUS_SESSION_BUS_ADDRESS}"
+export DBUS_SESSION_BUS_PID
+
+log "D-Bus session bus: ${DBUS_SESSION_BUS_ADDRESS} (PID: ${DBUS_SESSION_BUS_PID})"
+rm -f /tmp/dbus_info
 
 # =============================================================================
 # STEP 2 – Xvfb Virtual Framebuffer on Display :99
@@ -128,18 +142,23 @@ log "Openbox WM started"
 # =============================================================================
 log "STEP 3: Starting PulseAudio daemon..."
 
+# Unset any conflicting environment variables before starting the daemon
+unset PULSE_SERVER
+
 # Set PULSE_RUNTIME_PATH so the socket lands inside XDG_RUNTIME_DIR
 export PULSE_RUNTIME_PATH="${XDG_RUNTIME_DIR:-/run/user/1000}/pulse"
 mkdir -p "${PULSE_RUNTIME_PATH}"
 
 pulseaudio \
-    --start \
-    --log-target=newfile:/tmp/pulseaudio.log \
+    --daemonize=no \
+    --log-target=stderr \
     --exit-idle-time=-1 \
     --disallow-module-loading=0 \
-    --daemon \
     --realtime=false \
-    --high-priority=false
+    --high-priority=false \
+    &
+PA_PID=$!
+log "PulseAudio PID: ${PA_PID}"
 
 # Wait for PulseAudio to accept connections
 for i in $(seq 1 30); do
@@ -151,7 +170,13 @@ for i in $(seq 1 30); do
 done
 
 log "PulseAudio server info:"
-pactl info 2>&1 | grep -E "(Server Name|Default Sink|Default Source)" | sed 's/^/  /'
+pactl info 2>&1 | grep -E "(Server Name|Default Sink|Default Source)" | sed 's/^/  /' || log "  (Warning: Could not parse all PulseAudio info)"
+
+# Explicitly check for PulseAudio before proceeding
+if ! pactl info >/dev/null 2>&1; then
+    log "ERROR: PulseAudio did not start correctly. Check /tmp/pulseaudio.log"
+    exit 1
+fi
 
 # =============================================================================
 # STEP 4 – Configure PulseAudio Null Sink (KIWI_RX virtual audio device)

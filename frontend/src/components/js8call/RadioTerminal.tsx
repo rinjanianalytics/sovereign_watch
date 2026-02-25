@@ -69,12 +69,12 @@ const MAX_STATIONS = 100;
 // Utility helpers
 // ---------------------------------------------------------------------------
 
-function bearingToCardinal(deg) {
+function bearingToCardinal(deg: number): string {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   return dirs[Math.round(deg / 45) % 8];
 }
 
-function formatAge(ts_unix) {
+function formatAge(ts_unix: number | null): string {
   if (!ts_unix) return '--';
   const age = Math.floor(Date.now() / 1000) - ts_unix;
   if (age < 60) return `${age}s`;
@@ -83,7 +83,7 @@ function formatAge(ts_unix) {
 }
 
 // SNR thresholds tuned to JS8Call's realistic operating range (-24 to +5 dB)
-function snrColor(snr) {
+function snrColor(snr: number | null): string {
   if (snr == null) return 'text-slate-500';
   if (snr >= -10) return 'text-emerald-400';
   if (snr >= -18) return 'text-yellow-400';
@@ -94,8 +94,17 @@ function snrColor(snr) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
+interface Station {
+  callsign: string;
+  grid?: string;
+  distance_km?: number | null;
+  bearing_deg?: number;
+  snr: number | null;
+  ts_unix: number;
+}
+
 /** Individual station row in the Heard Stations sidebar */
-function StationCard({ station, isNew }) {
+function StationCard({ station, isNew }: { station: Station; isNew: boolean }) {
   return (
     <div
       className={`
@@ -135,8 +144,19 @@ function StationCard({ station, isNew }) {
   );
 }
 
+interface LogEntryItem {
+  id: string;
+  type: string;
+  from?: string;
+  to?: string;
+  text?: string;
+  message?: string;
+  timestamp: string;
+  snr?: number | null;
+}
+
 /** A single row in the message log */
-function LogEntry({ entry }) {
+function LogEntry({ entry }: { entry: LogEntryItem }) {
   const isLocal = entry.from === 'LOCAL' || entry.type === 'TX.SENT';
   const isSystem = entry.type === 'SYSTEM' || entry.type === 'CONNECTED' || entry.type === 'ERROR';
 
@@ -182,7 +202,7 @@ function LogEntry({ entry }) {
             <span className="text-slate-600 px-1">▶</span>
             <span className={
               (entry.to || '').toUpperCase().includes('@ALLCALL') ||
-              (entry.to || '').toUpperCase().includes('@CQ')
+                (entry.to || '').toUpperCase().includes('@CQ')
                 ? 'text-yellow-400'
                 : 'text-slate-400'
             }>
@@ -206,9 +226,9 @@ export default function RadioTerminal() {
   const [js8Connected, setJs8Connected] = useState(false);
   const [statusLine, setStatusLine] = useState({ callsign: '--', grid: '----', freq: '--' });
 
-  const [logEntries, setLogEntries] = useState([]);
-  const [stations, setStations] = useState({});
-  const [newCallsigns, setNewCallsigns] = useState(new Set());
+  const [logEntries, setLogEntries] = useState<LogEntryItem[]>([]);
+  const [stations, setStations] = useState<Record<string, Station>>({});
+  const [newCallsigns, setNewCallsigns] = useState<Set<string>>(new Set());
 
   const [txTarget, setTxTarget] = useState('@ALLCALL');
   const [txMessage, setTxMessage] = useState('');
@@ -224,17 +244,17 @@ export default function RadioTerminal() {
   const [kiwiConnecting, setKiwiConnecting] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const wsRef = useRef(null);
-  const reconnectTimer = useRef(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<any>(null);
   const reconnectDelay = useRef(RECONNECT_BASE_MS);
-  const logBottomRef = useRef(null);
-  const logContainerRef = useRef(null);
+  const logBottomRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  const appendSystem = useCallback((text) => {
+  const appendSystem = useCallback((text: string) => {
     setLogEntries((prev) => {
-      const entry = {
+      const entry: LogEntryItem = {
         id: `sys-${Date.now()}-${Math.random()}`,
         type: 'SYSTEM',
         text,
@@ -287,7 +307,7 @@ export default function RadioTerminal() {
     ws.onerror = () => appendSystem('WebSocket error – will retry');
 
     ws.onmessage = (evt) => {
-      let payload;
+      let payload: any;
       try {
         payload = JSON.parse(evt.data);
       } catch {
@@ -301,7 +321,7 @@ export default function RadioTerminal() {
         setJs8Connected(payload.js8call_connected ?? false);
         if (payload.kiwi_connected) {
           setKiwiConnected(true);
-          setKiwiConfig((prev) => ({
+          setKiwiConfig((prev: any) => ({
             ...prev,
             host: payload.kiwi_host || prev.host,
             port: payload.kiwi_port || prev.port,
@@ -333,8 +353,8 @@ export default function RadioTerminal() {
       }
 
       if (type === 'RX.DIRECTED' || type === 'TX.SENT') {
-        setLogEntries((prev) => {
-          const entry = {
+        setLogEntries((prev: LogEntryItem[]) => {
+          const entry: LogEntryItem = {
             id: `${Date.now()}-${Math.random()}`,
             ...payload,
             text: payload.text || payload.message || '',
@@ -348,7 +368,7 @@ export default function RadioTerminal() {
       if (type === 'RX.SPOT') {
         const callsign = payload.callsign;
         if (!callsign) return;
-        setStations((prev) => {
+        setStations((prev: Record<string, Station>) => {
           const updated = { ...prev, [callsign]: { ...payload } };
           const keys = Object.keys(updated);
           if (keys.length > MAX_STATIONS) {
@@ -359,9 +379,9 @@ export default function RadioTerminal() {
           }
           return updated;
         });
-        setNewCallsigns((prev) => new Set([...prev, callsign]));
+        setNewCallsigns((prev: Set<string>) => new Set([...prev, callsign]));
         setTimeout(() => {
-          setNewCallsigns((prev) => {
+          setNewCallsigns((prev: Set<string>) => {
             const next = new Set(prev);
             next.delete(callsign);
             return next;
@@ -380,8 +400,8 @@ export default function RadioTerminal() {
       }
 
       if (type === 'STATION_LIST') {
-        const map = {};
-        (payload.stations || []).forEach((s) => { map[s.callsign] = s; });
+        const map: Record<string, Station> = {};
+        (payload.stations || []).forEach((sValue: any) => { map[sValue.callsign] = sValue; });
         setStations(map);
         return;
       }
@@ -402,7 +422,7 @@ export default function RadioTerminal() {
 
   // ── Transmit handler ───────────────────────────────────────────────────────
 
-  const handleSend = useCallback((e) => {
+  const handleSend = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const msg = txMessage.trim();
     if (!msg || !connected || txPending) return;
@@ -438,7 +458,7 @@ export default function RadioTerminal() {
   // ── Sorted station array ───────────────────────────────────────────────────
 
   const sortedStations = useMemo(
-    () => Object.values(stations).sort((a, b) => (b.ts_unix || 0) - (a.ts_unix || 0)),
+    () => Object.values(stations).sort((a: Station, b: Station) => (b.ts_unix || 0) - (a.ts_unix || 0)),
     [stations]
   );
 
@@ -483,7 +503,7 @@ export default function RadioTerminal() {
                 <input
                   type="text"
                   value={kiwiConfig.host}
-                  onChange={(e) => setKiwiConfig((p) => ({ ...p, host: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, host: e.target.value }))}
                   placeholder="sdr.host.com"
                   disabled={!connected || kiwiConnecting}
                   className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-36 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
@@ -492,7 +512,7 @@ export default function RadioTerminal() {
                 <input
                   type="number"
                   value={kiwiConfig.port}
-                  onChange={(e) => setKiwiConfig((p) => ({ ...p, port: Number(e.target.value) || 8073 }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, port: Number(e.target.value) || 8073 }))}
                   placeholder="8073"
                   disabled={!connected || kiwiConnecting}
                   className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-16 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
@@ -501,7 +521,7 @@ export default function RadioTerminal() {
                 <input
                   type="number"
                   value={kiwiConfig.freq}
-                  onChange={(e) => setKiwiConfig((p) => ({ ...p, freq: Number(e.target.value) || 14074 }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, freq: Number(e.target.value) || 14074 }))}
                   placeholder="14074"
                   disabled={!connected || kiwiConnecting}
                   className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-20 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
@@ -518,8 +538,8 @@ export default function RadioTerminal() {
                 ${kiwiConnected
                   ? 'bg-rose-600/20 border border-rose-500/30 text-rose-400 hover:bg-rose-600/40'
                   : kiwiConnecting
-                  ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-wait'
-                  : 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/40 disabled:opacity-40 disabled:cursor-not-allowed'}
+                    ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-wait'
+                    : 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/40 disabled:opacity-40 disabled:cursor-not-allowed'}
               `}
             >
               {kiwiConnected ? 'Disconnect SDR' : kiwiConnecting ? 'Connecting…' : 'Connect SDR'}
@@ -546,11 +566,10 @@ export default function RadioTerminal() {
 
         {/* Right: connection state */}
         <div className="flex items-center gap-3 text-xs">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded border ${
-            connected
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-          }`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded border ${connected
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+            }`}>
             <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
             {connected ? 'BRIDGE' : 'OFFLINE'}
           </div>

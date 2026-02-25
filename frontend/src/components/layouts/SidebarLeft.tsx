@@ -23,6 +23,7 @@ interface SidebarLeftProps {
   js8StatusLine?: JS8StatusLine;
   js8BridgeConnected?: boolean;
   js8Connected?: boolean;
+  sendMessage?: (target: string, message: string) => void;
 }
 
 export const SidebarLeft: React.FC<SidebarLeftProps> = ({
@@ -39,15 +40,16 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
   js8StatusLine = { callsign: '--', grid: '----', freq: '--' },
   js8BridgeConnected = false,
   js8Connected = false,
+  sendMessage = () => { },
 }) => {
   return (
     <div className="flex flex-col h-full gap-4 animate-in fade-in duration-1000">
       {/* Search Widget */}
       {mapActions && (
-          <SearchWidget 
-            mapActions={mapActions} 
-            onEntitySelect={onEntitySelect} 
-          />
+        <SearchWidget
+          mapActions={mapActions}
+          onEntitySelect={onEntitySelect}
+        />
       )}
 
       {/* Mission Navigator */}
@@ -77,6 +79,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
         statusLine={js8StatusLine}
         connected={js8BridgeConnected}
         js8Connected={js8Connected}
+        sendMessage={sendMessage}
       />
 
       {/* 4. Metrics & Analytics */}

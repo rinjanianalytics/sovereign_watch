@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState, useCallback, MutableRefObject } from 'react';
 import type { JS8Station, JS8LogEntry, JS8StatusLine } from '../types';
 
-const WS_URL =
-  typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_JS8_WS_URL
-    ? (import.meta as any).env.VITE_JS8_WS_URL
-    : 'ws://localhost:8080/ws/js8';
+const WS_URL = import.meta.env.VITE_JS8_WS_URL || 'ws://localhost:8082/ws/js8';
 
 const RECONNECT_BASE_MS = 2000;
 const RECONNECT_MAX_MS = 30000;
@@ -19,6 +16,7 @@ export interface UseJS8StationsResult {
   statusLine: JS8StatusLine;
   connected: boolean;
   js8Connected: boolean;
+  sendMessage: (target: string, message: string) => void;
 }
 
 export function useJS8Stations(): UseJS8StationsResult {
@@ -144,6 +142,12 @@ export function useJS8Stations(): UseJS8StationsResult {
     };
   }, [syncStations]);
 
+  const sendMessage = useCallback((target: string, message: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'SEND', target, message }));
+    }
+  }, []);
+
   useEffect(() => {
     connect();
     return () => {
@@ -152,5 +156,5 @@ export function useJS8Stations(): UseJS8StationsResult {
     };
   }, [connect]);
 
-  return { stationsRef, ownGridRef, stations, logEntries, statusLine, connected, js8Connected };
+  return { stationsRef, ownGridRef, stations, logEntries, statusLine, connected, js8Connected, sendMessage };
 }

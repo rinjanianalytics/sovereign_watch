@@ -433,21 +433,13 @@ async def lifespan(app: FastAPI):
     # Connect pyjs8call to the local JS8Call TCP API
     if PYJS8CALL_AVAILABLE:
         try:
-            js8_client = pyjs8call.Client()
-            js8_client.start(JS8CALL_HOST, JS8CALL_PORT)
+            js8_client = pyjs8call.Client(host=JS8CALL_HOST, port=JS8CALL_PORT)
+            js8_client.start()
 
-            # Register event callbacks using pyjs8call's hook system.
-            # Each hook type maps to a specific JS8Call TCP message type.
-            # The library calls our handler in its own background thread.
-            js8_client.callback.register_hook(
-                pyjs8call.Client.RX_DIRECTED, on_rx_directed
-            )
-            js8_client.callback.register_hook(
-                pyjs8call.Client.RX_SPOT, on_rx_spot
-            )
-            js8_client.callback.register_hook(
-                pyjs8call.Client.STATION_STATUS, on_station_status
-            )
+            # Register event callbacks using pyjs8call's 0.2.3 API.
+            js8_client.callback.register_incoming(on_rx_directed)
+            js8_client.callback.register_spots(on_rx_spot)
+            js8_client.callback.register_station_spot(on_station_status)
             logger.info("pyjs8call connected to JS8Call at %s:%d", JS8CALL_HOST, JS8CALL_PORT)
         except Exception as exc:
             logger.error("Failed to connect to JS8Call: %s", exc)
@@ -512,7 +504,21 @@ async def ws_js8(websocket: WebSocket) -> None:
     remote = websocket.client
     logger.info("WebSocket connected: %s", remote)
 
-    # Send an initial "connected" handshake so the frontend knows the bridge is up
+    # Prepare initial handshake data
+    callsign = "--"
+    grid = "----"
+    freq = "0"
+    
+    if js8_client is not None:
+        try:
+            # Use current settings if already connected; fall back to env vars if None
+            callsign = js8_client.settings.get_station_callsign() or "N0CALL"
+            grid = js8_client.settings.get_station_grid() or MY_GRID
+            freq_raw = js8_client.settings.get_freq()
+            freq = str(freq_raw) if freq_raw is not None else "--"
+        except Exception:
+            pass
+
     await websocket.send_json({
         "type": "CONNECTED",
         "message": "JS8Call bridge active",
@@ -522,8 +528,22 @@ async def ws_js8(websocket: WebSocket) -> None:
         "kiwi_port": _kiwi_config.get("port", 0),
         "kiwi_freq": _kiwi_config.get("freq", 0),
         "kiwi_mode": _kiwi_config.get("mode", ""),
+        "callsign": callsign,
+        "grid": grid,
         "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
     })
+
+    # Also send an immediate status update to populate the "STATION" field in the UI
+    if js8_client is not None:
+        await websocket.send_json({
+            "type": "STATION.STATUS",
+            "callsign": callsign,
+            "grid": grid,
+            "freq": js8_client.settings.get_freq() or 0,
+            "status": "IDLE",
+            "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
+            "ts_unix": int(time.time()),
+        })
 
     try:
         # Receive loop – handle commands from the frontend
