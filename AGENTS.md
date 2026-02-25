@@ -22,6 +22,16 @@
 - **Rendering**: Hybrid Architecture (WebGL2 for visuals). Do not downgrade to Leaflet.
 - **State**: Backend uses `Redpanda` (Kafka-compatible) for event streaming.
 
+### 📝 Documentation & Change Tracking
+- **File**: `docs/jules_changes.md`
+- **Requirement**: You **MUST** append a new entry for all significant features, bug fixes, and architectural changes.
+- **Format**: Include the **Date** and follow the existing structure:
+  - **Issue**: Description of the problem or feature request.
+  - **Solution**: High-level approach taken.
+  - **Changes**: Specific files modified and logic implemented.
+  - **Verification**: Tests run and results observed.
+  - **Benefits**: Impact on the project (e.g., performance, security, maintainability).
+
 ## 3. Agent Role Routing (Token Optimization)
 **Do NOT read the entire `.agent/` directory.** It contains ~400k tokens.
 Instead, read **ONLY** the specific file for your current task:
