@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { chaikinSmooth } from './geoUtils';
+import {
+  chaikinSmooth,
+  getDistanceMeters,
+  getBearing,
+  maidenheadToLatLon,
+  uidToHash,
+  calculateZoom,
+  buildGraticule,
+  getCompensatedCenter
+} from './geoUtils';
 
 describe('chaikinSmooth', () => {
   it('should return original points if fewer than 3 points provided', () => {
@@ -24,7 +33,7 @@ describe('chaikinSmooth', () => {
     // Result should be: [Start, Seg1_Q, Seg1_R, Seg2_Q, Seg2_R, End]
     // [0,0], [2.5, 2.5], [7.5, 7.5], [12.5, 7.5], [17.5, 2.5], [20,0]
 
-    const pts = [[0, 0, 0], [10, 10, 0], [20, 0, 0]]; // Using 3D points as per implementation
+    const pts = [[0, 0, 0], [10, 10, 0], [20, 0, 0]];
     const result = chaikinSmooth(pts, 1);
 
     expect(result.length).toBe(6);
@@ -66,5 +75,162 @@ describe('chaikinSmooth', () => {
      const pts = [[0, 0, 0], [10, 10, 0], [20, 0, 0]];
      const result = chaikinSmooth(pts);
      expect(result.length).toBe(12);
+  });
+});
+
+describe('getDistanceMeters', () => {
+  it('should return 0 for same point', () => {
+    expect(getDistanceMeters(0, 0, 0, 0)).toBe(0);
+    expect(getDistanceMeters(45, 90, 45, 90)).toBe(0);
+  });
+
+  it('should return correct distance for known points (approx)', () => {
+    // 1 degree latitude is approx 111,319 meters at equator
+    const dist = getDistanceMeters(0, 0, 1, 0);
+    expect(dist).toBeCloseTo(111194.9, 0);
+    // Using R=6371e3, 1 deg = 2*pi*R/360 = 2*pi*6371000/360 = 111194.9266...
+  });
+
+  it('should return correct distance across equator', () => {
+    // (0,0) to (0,1) -> 1 deg longitude at equator is same as 1 deg lat
+    const dist = getDistanceMeters(0, 0, 0, 1);
+    expect(dist).toBeCloseTo(111194.9, 0);
+  });
+
+  it('should return correct distance across pole', () => {
+    // North pole (90,0) to (89,0) -> 1 deg lat
+    const dist = getDistanceMeters(90, 0, 89, 0);
+    expect(dist).toBeCloseTo(111194.9, 0);
+  });
+});
+
+describe('getBearing', () => {
+  it('should return 0 for North', () => {
+    // (0,0) to (1,0)
+    expect(getBearing(0, 0, 1, 0)).toBeCloseTo(0);
+  });
+
+  it('should return 90 for East', () => {
+    // (0,0) to (0,1)
+    expect(getBearing(0, 0, 0, 1)).toBeCloseTo(90);
+  });
+
+  it('should return 180 for South', () => {
+    // (0,0) to (-1,0)
+    expect(getBearing(0, 0, -1, 0)).toBeCloseTo(180);
+  });
+
+  it('should return 270 for West', () => {
+    // (0,0) to (0,-1)
+    expect(getBearing(0, 0, 0, -1)).toBeCloseTo(270);
+  });
+
+  it('should handle crossing the dateline', () => {
+    expect(getBearing(0, 179, 0, -179)).toBeCloseTo(90);
+  });
+
+  it('should handle crossing the dateline Westward', () => {
+    expect(getBearing(0, -179, 0, 179)).toBeCloseTo(270);
+  });
+});
+
+describe('maidenheadToLatLon', () => {
+  it('should return [0,0] for invalid input', () => {
+    expect(maidenheadToLatLon('')).toEqual([0, 0]);
+    expect(maidenheadToLatLon('ABC')).toEqual([0, 0]);
+  });
+
+  it('should decode 4-char grid correctly', () => {
+    const [lat, lon] = maidenheadToLatLon('FN31');
+    expect(lat).toBeCloseTo(41.5);
+    expect(lon).toBeCloseTo(-73);
+  });
+
+  it('should decode 6-char grid correctly', () => {
+    const [lat, lon] = maidenheadToLatLon('FN31pr');
+    expect(lat).toBeCloseTo(41.729166, 4);
+    expect(lon).toBeCloseTo(-72.708333, 4);
+  });
+
+  it('should be case insensitive', () => {
+    const [lat1, lon1] = maidenheadToLatLon('fn31pr');
+    const [lat2, lon2] = maidenheadToLatLon('FN31PR');
+    expect(lat1).toBe(lat2);
+    expect(lon1).toBe(lon2);
+  });
+});
+
+describe('uidToHash', () => {
+  it('should return 0 for empty uid', () => {
+    expect(uidToHash('')).toBe(0);
+  });
+
+  it('should return deterministic hash', () => {
+    const uid = 'test-uid-123';
+    const h1 = uidToHash(uid);
+    const h2 = uidToHash(uid);
+    expect(h1).toBe(h2);
+    expect(h1).not.toBe(0);
+  });
+
+  it('should return different hashes for different uids', () => {
+    expect(uidToHash('abc')).not.toBe(uidToHash('abd'));
+  });
+});
+
+describe('calculateZoom', () => {
+  it('should return max zoom for small radius', () => {
+    expect(calculateZoom(0.1)).toBe(14);
+  });
+
+  it('should decrease zoom for larger radius', () => {
+    expect(calculateZoom(16)).toBe(10);
+  });
+
+  it('should clamp to min zoom 2', () => {
+    expect(calculateZoom(10000)).toBe(2);
+  });
+});
+
+describe('buildGraticule', () => {
+  it('should return a FeatureCollection', () => {
+    const fc = buildGraticule();
+    expect(fc.type).toBe('FeatureCollection');
+    expect(Array.isArray(fc.features)).toBe(true);
+  });
+
+  it('should generate lines', () => {
+    const fc = buildGraticule(90);
+    expect(fc.features.length).toBe(8);
+  });
+});
+
+describe('getCompensatedCenter', () => {
+  it('should return original coords if pitch or altitude is <= 0', () => {
+    const map = { getPitch: () => 0, getBearing: () => 0 };
+    expect(getCompensatedCenter(10, 20, 100, map)).toEqual([20, 10]);
+
+    const map2 = { getPitch: () => 45, getBearing: () => 0 };
+    expect(getCompensatedCenter(10, 20, 0, map2)).toEqual([20, 10]);
+  });
+
+  it('should compensate for altitude when pitch > 0', () => {
+    const map = { getPitch: () => 45, getBearing: () => 0 };
+    const [lon, lat] = getCompensatedCenter(0, 0, 1000, map);
+    // 45 deg pitch -> tan(45) = 1.
+    // Shift is 1000m North (bearing 0).
+    // Lat shift approx 0.00899 degrees.
+    expect(lon).toBeCloseTo(0);
+    expect(lat).toBeGreaterThan(0);
+    expect(lat).toBeCloseTo(0.00899, 5);
+  });
+
+  it('should compensate correctly for bearing 90', () => {
+    const map = { getPitch: () => 45, getBearing: () => 90 };
+    const [lon, lat] = getCompensatedCenter(0, 0, 1000, map);
+    // Shift is 1000m East.
+    expect(lat).toBeCloseTo(0);
+    expect(lon).toBeGreaterThan(0);
+    expect(lon).toBeCloseTo(0.00899, 5);
   });
 });

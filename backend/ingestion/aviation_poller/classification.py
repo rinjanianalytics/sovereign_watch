@@ -19,8 +19,8 @@ def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
     Returns a dict with affiliation, platform, size, and raw fields.
     """
     # Extract raw fields safely
-    category = ac.get("category", "")
-    t_field = ac.get("t", "")
+    category = (ac.get("category") or "")
+    t_field = (ac.get("t") or "")
     db_flags = int(ac.get("dbFlags") or 0)
     operator = (ac.get("ownOp") or "").strip()
     hex_id = (ac.get("hex") or "").upper()
