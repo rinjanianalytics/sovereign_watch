@@ -261,6 +261,8 @@ def grid_distance_bearing(remote_grid: str, my_grid: str = MY_GRID) -> dict:
     km = haversine_distance_km(my_lat, my_lon, r_lat, r_lon)
     bearing = initial_bearing(my_lat, my_lon, r_lat, r_lon)
     return {
+        "lat": round(r_lat, 4),
+        "lon": round(r_lon, 4),
         "distance_km": round(km, 1),
         "distance_mi": round(km * 0.621371, 1),
         "bearing_deg": round(bearing, 1),

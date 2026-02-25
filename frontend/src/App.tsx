@@ -7,12 +7,22 @@ import { TopBar } from './components/layouts/TopBar'
 import { CoTEntity, IntelEvent, MissionProps } from './types'
 import { TimeControls } from './components/widgets/TimeControls'
 import { useSystemHealth } from './hooks/useSystemHealth'
+import { useJS8Stations } from './hooks/useJS8Stations'
 
 function App() {
   const [trackCounts, setTrackCounts] = useState({ air: 0, sea: 0, orbital: 0 });
   const [selectedEntity, setSelectedEntity] = useState<CoTEntity | null>(null);
   const [followMode, setFollowMode] = useState(false);
   const health = useSystemHealth();
+  const {
+    stationsRef: js8StationsRef,
+    ownGridRef: js8OwnGridRef,
+    stations: js8Stations,
+    logEntries: js8LogEntries,
+    statusLine: js8StatusLine,
+    connected: js8BridgeConnected,
+    js8Connected,
+  } = useJS8Stations();
   
   // Map Actions (Search, FlyTo)
   const [mapActions, setMapActions] = useState<import('./types').MapActions | null>(null);
@@ -333,7 +343,7 @@ function App() {
         />
       }
       leftSidebar={
-        <SidebarLeft 
+        <SidebarLeft
           trackCounts={trackCounts}
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -342,6 +352,11 @@ function App() {
           health={health}
           mapActions={mapActions}
           onEntitySelect={handleEntitySelect}
+          js8Stations={js8Stations}
+          js8LogEntries={js8LogEntries}
+          js8StatusLine={js8StatusLine}
+          js8BridgeConnected={js8BridgeConnected}
+          js8Connected={js8Connected}
         />
       }
       rightSidebar={
@@ -377,6 +392,8 @@ function App() {
           followMode={followMode} // Pass follow mode
           onFollowModeChange={setFollowMode}
           onEntityLiveUpdate={handleEntityLiveUpdate}
+          js8StationsRef={js8StationsRef}
+          ownGridRef={js8OwnGridRef}
       />
 
       

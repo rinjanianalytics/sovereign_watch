@@ -5,13 +5,14 @@ import React, {
   useCallback,
   lazy,
   Suspense,
+  MutableRefObject,
 } from "react";
 import { Globe, RotateCcw, ChevronUp, ChevronDown } from "lucide-react";
 import type { MapRef } from "react-map-gl/maplibre";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { CoTEntity, MissionProps } from "../../types";
+import { CoTEntity, JS8Station, MissionProps } from "../../types";
 import { MapTooltip } from "./MapTooltip";
 import { MapContextMenu } from "./MapContextMenu";
 import { SaveLocationForm } from "./SaveLocationForm";
@@ -80,6 +81,8 @@ interface TacticalMapProps {
   followMode?: boolean;
   onFollowModeChange?: (enabled: boolean) => void;
   onEntityLiveUpdate?: (entity: CoTEntity) => void;
+  js8StationsRef?: MutableRefObject<Map<string, JS8Station>>;
+  ownGridRef?: MutableRefObject<string>;
 }
 
 export function TacticalMap({
@@ -99,6 +102,8 @@ export function TacticalMap({
   followMode,
   onFollowModeChange,
   onEntityLiveUpdate,
+  js8StationsRef,
+  ownGridRef,
 }: TacticalMapProps) {
   // State for UI interactions
   const [hoveredEntity, setHoveredEntity] = useState<CoTEntity | null>(null);
@@ -271,6 +276,8 @@ export function TacticalMap({
     onEntitySelect,
     onEntityLiveUpdate,
     onFollowModeChange,
+    js8StationsRef,
+    ownGridRef,
   });
 
   // Map Camera: projection, graticule, 3D terrain/fog

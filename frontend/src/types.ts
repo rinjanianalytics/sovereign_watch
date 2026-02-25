@@ -82,6 +82,36 @@ export interface MapActions {
     onEntityLiveUpdate?: (entity: CoTEntity) => void;
 }
 
+export interface JS8Station {
+  callsign: string;
+  grid: string;
+  lat: number;
+  lon: number;
+  snr: number;
+  freq?: number;
+  distance_km?: number;
+  distance_mi?: number;
+  bearing_deg?: number;
+  ts_unix: number;
+  timestamp?: string;
+}
+
+export interface JS8LogEntry {
+  id: string;
+  type: string;
+  from?: string;
+  to?: string;
+  text?: string;
+  snr?: number;
+  timestamp?: string;
+}
+
+export interface JS8StatusLine {
+  callsign: string;
+  grid: string;
+  freq: string;
+}
+
 export interface MapFilters {
     showAir: boolean;
     showSea: boolean;
