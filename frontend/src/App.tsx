@@ -9,6 +9,7 @@ import { CoTEntity, IntelEvent, MissionProps } from './types'
 import { TimeControls } from './components/widgets/TimeControls'
 import { useSystemHealth } from './hooks/useSystemHealth'
 import { useJS8Stations } from './hooks/useJS8Stations'
+import { processReplayData } from './utils/replayUtils'
 
 function App() {
   const [viewMode, setViewMode] = useState<'TACTICAL' | 'RADIO'>('TACTICAL');
@@ -139,44 +140,7 @@ function App() {
       console.log(`Loaded ${data.length} historical points`);
 
       // Process and Index Data
-      const cache = new Map<string, CoTEntity[]>();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.forEach((pt: any) => {
-        // Convert DB row to CoTEntity partial
-        // Note: DB returns snake_case, CoTEntity is strict.
-        // We need manual mapping.
-
-        // Parse meta safely
-        let meta: any = {};
-        try {
-          meta = typeof pt.meta === 'string' ? JSON.parse(pt.meta) : pt.meta || {};
-        } catch { /* ignore */ }
-
-        const entity: CoTEntity = {
-          uid: pt.entity_id,
-          type: pt.type,
-          lat: pt.lat,
-          lon: pt.lon,
-          altitude: pt.alt,
-          speed: pt.speed,
-          course: pt.heading,
-          callsign: meta.callsign || pt.entity_id,
-          time: new Date(pt.time).getTime(),
-          lastSeen: new Date(pt.time).getTime(),
-          trail: [], // Replay doesn't need trails yet or we can generate them
-          uidHash: 0 // Will be computed by map
-        };
-
-        if (!cache.has(entity.uid)) cache.set(entity.uid, []);
-        cache.get(entity.uid)?.push(entity);
-      });
-
-      // Sort by time
-      for (const list of cache.values()) {
-        list.sort((a, b) => (a.time || 0) - (b.time || 0));
-      }
-
-      replayCacheRef.current = cache;
+      replayCacheRef.current = processReplayData(data);
       setReplayRange({ start: start.getTime(), end: end.getTime() });
       setReplayTime(start.getTime());
       updateReplayFrame(start.getTime());
