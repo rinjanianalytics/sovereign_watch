@@ -1,3 +1,17 @@
+## [0.12.1] - 2026-03-01
+
+### Fixed
+
+- **Drone Classification Accuracy (ADS-B Aviation Poller):**
+  - Introduced dedicated constants for Military, Commercial, Civil, and Generic UAS identification strings.
+  - Improved `classify_aircraft` detection logic, now cross-referencing ICAO category, type code, description, squawk code, operator, callsign, and registration fields for higher-confidence classification.
+  - Added granular `drone_class` sub-assignments (`MILITARY_UAS`, `COMMERCIAL_UAS`, `CIVIL_UAS`, `UNKNOWN_UAS`) emitted alongside `aircraft_class = "drone"` in the classification payload.
+  - Expanded `test_classification.py` with comprehensive drone fixture coverage to prevent classification regressions.
+
+- **API Security — Information Disclosure via Error Handling:**
+  - Hardened `backend/api/routers/analysis.py` and `backend/api/routers/system.py` to suppress internal stack traces and implementation details from HTTP error responses (MEDIUM severity).
+  - Structured error responses now return generic operator-safe messages, preventing inadvertent leakage of backend internals to external callers.
+
 ## [0.12.0] - 2026-03-01
 
 ### Added

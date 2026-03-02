@@ -1,4 +1,4 @@
-# Release - v0.12.0 - Infrastructure Awareness
+# Release - v0.12.1 - Security & Classification Patch
 
 **Released:** 2026-03-01
 
@@ -6,31 +6,24 @@
 
 ## Summary
 
-v0.12.0 delivers Sovereign Watch's **Global Infrastructure Awareness** capability — a significant step forward in multi-INT fusion. Operators can now visualize the world's undersea communications backbone (submarine cables and landing stations) alongside the established RF repeater network, all rendered in a premium, unified "Sovereign Glass" aesthetic.
+v0.12.1 is a targeted patch release addressing two issues carried over from v0.12.0 development: a hardening of backend API error handling to eliminate information disclosure, and a significant accuracy improvement to the ADS-B aviation poller's UAS/drone classification engine.
 
-This release unifies all infrastructure layers under a clear and consistent **Emerald (RF) / Cyan (Undersea)** color protocol, ensuring operators can instantly identify the nature of an infrastructure asset at a glance. Combined with a refined clustering engine, actionable Intelligence Feed notifications, and a corrected Architecture documentation, v0.12.0 raises the bar for tactical situational awareness.
+No new features, breaking changes, or database migrations are introduced. Operators can upgrade by rebuilding only the affected services.
 
 ---
 
-## ✨ Key Features
+## 🔧 What's Fixed
 
-### 🌊 Undersea Infrastructure Awareness (NEW)
-- **Live Submarine Cable Map:** Full global cable network rendered as Deck.gl line layers, with unique colors per cable system sourced directly from SubmarineCableMap.com.
-- **Landing Station Indicators:** An independently toggleable layer for cable landing points, displayed as colored dots aligned to their cable's signature color.
-- **Tactical Tooltips:** Hover over any cable or station to see a tactical intel card with cable name, owner(s), length, and operational status.
-- **Intel Feed Events:** Toggling Submarine Cables or Landing Stations triggers a structured Intelligence Feed notification with timestamp and confirmation.
-- **24h Cache:** Cable data is cached in `localStorage` for 24 hours, preventing redundant API calls on every session start.
+### 🛡️ API Security — Secure Error Handling (Medium)
+- Internal stack traces and implementation details are no longer exposed in HTTP error responses from `analysis` and `system` routers.
+- All error payloads now return structured, operator-safe messages — preventing inadvertent leakage of backend internals to external callers.
+- **Files affected:** `backend/api/routers/analysis.py`, `backend/api/routers/system.py`
 
-### 📻 RF Infrastructure — Tactical Clustering Refinement
-- **Emerald Cluster Sync:** Cluster halos updated from off-theme Violet to Emerald-400, bringing clusters into alignment with the entire RF color system.
-- **Reduced Visual Weight:** Cluster bubble radii and glow intensities reduced significantly, eliminating the "bubble soup" effect in high-density repeater regions (e.g., Cascadia / Pacific Northwest).
-- **Smarter Grid Logic:** Tightened the clustering grid multiplier and raised the zoom breakpoint from 6.0 to 7.5, giving operators a richer overview at mid-zoom without premature expansion.
-- **Correct Intel Notifications:** Toggle events for RF repeaters now reliably broadcast the correct station count after the loading cycle completes.
-
-### 🎨 Unified Infrastructure Color System
-- **Emerald-400 (#34D399):** RF Infrastructure — Repeaters, JS8Call, status indicators.
-- **Cyan-400 (#22D3EE):** Undersea — Cables, Landing Stations.
-- All header buttons, map markers, tooltips, and Intel Feed events now follow this protocol consistently.
+### ✈️ Drone Classification Accuracy (ADS-B Poller)
+- Overhauled UAS detection logic in `classify_aircraft` to cross-reference ICAO category, type code, description field, squawk code, operator, callsign, and registration for high-confidence identification.
+- Added dedicated string constants for `MILITARY_UAS`, `COMMERCIAL_UAS`, `CIVIL_UAS`, and `UNKNOWN_UAS` sub-classes, now emitted alongside `aircraft_class = "drone"` in the classification output.
+- Comprehensive test fixtures added to `test_classification.py` to lock in drone detection behavior and prevent future regressions.
+- **Files affected:** `backend/ingestion/aviation_poller/classification.py`, `backend/ingestion/aviation_poller/tests/test_classification.py`
 
 ---
 
@@ -38,16 +31,10 @@ This release unifies all infrastructure layers under a clear and consistent **Em
 
 | Area | Change |
 | :--- | :--- |
-| `buildRepeaterLayers.ts` | Cluster halo color → Emerald; tighter grid; zoom threshold 7.5 |
-| `buildInfraLayers.ts` | New file: Deck.gl layers for cables + landing stations |
-| `useInfraData.ts` | 24h `localStorage` cache; SubmarineCableMap.com proxy |
-| `TacticalMap.tsx` | Race condition fix for RF_NET notification; infra toggle observer |
-| `IntelFeed.tsx` | Fixed `ReferenceError`; Cyan theme for infra events |
-| `SystemStatus.tsx` | "Total Tracking" label; Landing Stations default OFF; Emerald/Cyan toggle buttons |
-| `MapTooltip.tsx` | Dedicated Cyan tooltip for cables & stations; Emerald for repeaters |
-| `LayerFilters.tsx` | Color-coded infra toggle switches (Emerald + Cyan + Black Circle) |
-| `README.md` | Fixed Mermaid diagram; added `## Data Sources` section |
-| `CHANGELOG.md` | Full `[0.12.0]` entry |
+| `analysis.py` | Replaced raw exception propagation with structured error responses |
+| `system.py` | Same — unified safe error handling pattern |
+| `classification.py` | New UAS constants + multi-field drone detection; granular `drone_class` emission |
+| `test_classification.py` | Comprehensive drone fixture suite (Military / Commercial / Civil / Unknown UAS) |
 
 **No breaking API or schema changes.** No new environment variables required.
 
@@ -59,11 +46,11 @@ This release unifies all infrastructure layers under a clear and consistent **Em
 # Pull latest changes
 git pull origin main
 
-# Rebuild and restart (no dependency changes required)
-docker compose up -d --build frontend
+# Rebuild and restart affected services
+docker compose up -d --build api
 
 # Verify services
 docker compose ps
 ```
 
-> _No database migrations required._
+> _No database migrations required. Frontend rebuild is not needed for this patch._
