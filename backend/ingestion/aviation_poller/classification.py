@@ -13,6 +13,24 @@ GOV_OPERATORS = {
     "NASA", "State Police", "DHS", "CBP", "National Police"
 }
 
+# Drone specific string matchers
+MILITARY_UAS_STRINGS = [
+    "USAF RQ-", "RQ-4", "MQ-9", "MQ-1", "RQ-170", "RQ-180",
+    "GLOBAL HAWK", "REAPER", "PREDATOR"
+]
+COMMERCIAL_UAS_STRINGS = [
+    "SKYDIO", "WINGCOPTER", "ZIPLINE", "WINGTRA"
+]
+CIVIL_UAS_STRINGS = [
+    "MAVIC", "PHANTOM", "DJI"
+]
+UAS_MANUFACTURER_STRINGS = [
+    "GENERAL ATOMICS", "NORTHROP GRUMMAN"
+]
+GENERIC_UAS_STRINGS = [
+    "DRONE", "UAV", "UAS", "RPV", "RPAS", "UNMANNED", "UNM"
+]
+
 def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
     """
     Derive a rich classification from raw ADS-B fields.
@@ -25,6 +43,9 @@ def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
     operator = (ac.get("ownOp") or "").strip()
     hex_id = (ac.get("hex") or "").upper()
     callsign = (ac.get("flight") or "").strip()
+    desc = (ac.get("desc") or "").strip()
+    squawk = (ac.get("squawk") or "").strip()
+    registration = (ac.get("r") or "").strip()
 
     # 1. Determine Affiliation
     affiliation = "general_aviation"  # Default
@@ -52,10 +73,48 @@ def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
     # 2. Determine Platform
     platform = "fixed_wing"  # Default
 
-    if category == "A7" or t_field.startswith("H"):
-        platform = "helicopter"
-    elif category == "B6":
+    # Build search string for string matching logic
+    search_str = f"{operator} {callsign} {desc} {registration}".upper()
+
+    # Determine if it is a drone
+    is_drone = False
+
+    if category == "B6":
+        is_drone = True
+    elif squawk == "7400":
+        is_drone = True
+    elif t_field.startswith("~"):
+        is_drone = True
+    elif t_field.startswith("Q") and not t_field == "Q400": # Exclude common non-drone Q code
+        is_drone = True
+    elif any(s in search_str for s in GENERIC_UAS_STRINGS):
+        is_drone = True
+    elif any(s in search_str for s in MILITARY_UAS_STRINGS):
+        is_drone = True
+    elif any(s in search_str for s in COMMERCIAL_UAS_STRINGS):
+        is_drone = True
+    elif any(s in search_str for s in CIVIL_UAS_STRINGS):
+        is_drone = True
+    elif any(s in search_str for s in UAS_MANUFACTURER_STRINGS):
+        is_drone = True
+    elif t_field == "GRND" and (any(s in search_str for s in GENERIC_UAS_STRINGS) or
+                                any(s in search_str for s in COMMERCIAL_UAS_STRINGS) or
+                                any(s in search_str for s in CIVIL_UAS_STRINGS)):
+        is_drone = True
+    elif t_field.endswith("Q"): # e.g. wake turbulence category or other specific trailing Q
+        # Double check if it's likely a drone, some regular planes might have trailing Q.
+        # But per instructions, check for trailing Q in wake turbulence or UNM in desc
+        # The prompt says "check for trailing Q in wake turbulence category or UNM (Unmanned) in category descriptions"
+        # The category is usually just B6, A1. The type is t_field. If t_field ends with Q and is short it might be drone
+        # Let's consider UNM was handled above. If t_field ends with Q, it might be a drone wake category.
+        # We will map any t_field ending in Q to drone if not standard.
+        # For safety and as requested:
+        is_drone = True
+
+    if is_drone:
         platform = "drone"
+    elif category == "A7" or t_field.startswith("H"):
+        platform = "helicopter"
     elif category == "B2":
         platform = "balloon"
     elif category == "B1":
@@ -78,7 +137,7 @@ def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
     elif category == "A5":
         size = "high_performance"
 
-    return {
+    result = {
         "affiliation": affiliation,
         "platform": platform,
         "size": size,
@@ -86,8 +145,31 @@ def classify_aircraft(ac: Dict[str, Any]) -> Dict[str, Any]:
         "category": category,
         "dbFlags": db_flags,
         "operator": operator,
-        "registration": ac.get("r", ""),
-        "description": ac.get("desc", ""),
-        "squawk": ac.get("squawk", ""),
+        "registration": registration,
+        "description": desc,
+        "squawk": squawk,
         "emergency": ac.get("emergency", "")
     }
+
+    if platform == "drone":
+        result["aircraft_class"] = "drone"
+        drone_class = "UNKNOWN_UAS"
+
+        if squawk == "7400":
+            drone_class = "MILITARY_UAS"
+        elif any(s in search_str for s in MILITARY_UAS_STRINGS):
+            drone_class = "MILITARY_UAS"
+        elif affiliation == "military":
+            drone_class = "MILITARY_UAS"
+        elif any(s in search_str for s in UAS_MANUFACTURER_STRINGS):
+            drone_class = "MILITARY_UAS"
+        elif any(s in search_str for s in COMMERCIAL_UAS_STRINGS):
+            drone_class = "COMMERCIAL_UAS"
+        elif any(s in search_str for s in CIVIL_UAS_STRINGS):
+            drone_class = "CIVIL_UAS"
+        elif affiliation == "commercial":
+            drone_class = "COMMERCIAL_UAS"
+
+        result["drone_class"] = drone_class
+
+    return result
