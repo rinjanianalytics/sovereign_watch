@@ -42,6 +42,20 @@ class TestADSBClassification:
         ("Case Sensitivity - Operator (Exact Match Required)", {"ownOp": "united states air force"}, "general_aviation", "fixed_wing", "unknown"), # Current logic is case-sensitive? Dictionary keys are Title Case. Let's verify.
         ("Hex Outside Range", {"hex": "ADFFFF"}, "general_aviation", "fixed_wing", "unknown"),
         ("Hex Outside Range 2", {"hex": "B00000"}, "general_aviation", "fixed_wing", "unknown"),
+
+        # --- Drone Classification ---
+        ("Drone by category B6", {"category": "B6"}, "general_aviation", "drone", "unknown"),
+        ("Military UAS by Squawk 7400", {"squawk": "7400"}, "general_aviation", "drone", "unknown"),
+        ("Military UAS by string MQ-9", {"flight": "MQ-9"}, "general_aviation", "drone", "unknown"),
+        ("Drone by GRND but no drone string", {"t": "GRND"}, "general_aviation", "fixed_wing", "unknown"),
+        ("Drone by GRND + SKYDIO string", {"t": "GRND", "desc": "SKYDIO"}, "general_aviation", "drone", "unknown"),
+        ("Military UAS by T field startswith ~", {"t": "~12345"}, "general_aviation", "drone", "unknown"),
+        ("Drone by T field startswith Q (not Q400)", {"t": "Q123"}, "general_aviation", "drone", "unknown"),
+        ("Fixed Wing by T field Q400 (exception)", {"t": "Q400"}, "general_aviation", "fixed_wing", "unknown"),
+        ("Drone by Generic String in CallSign", {"flight": "DRONE1"}, "general_aviation", "drone", "unknown"),
+        ("Military UAS by Manufacturer", {"ownOp": "NORTHROP GRUMMAN"}, "general_aviation", "drone", "unknown"),
+        ("Commercial UAS by String", {"ownOp": "ZIPLINE"}, "general_aviation", "drone", "unknown"),
+        ("Civil UAS by String", {"desc": "DJI MAVIC"}, "general_aviation", "drone", "unknown"),
     ])
     def test_classify_aircraft_scenarios(self, scenario, input_data, expected_affiliation, expected_platform, expected_size):
         """
@@ -74,9 +88,27 @@ class TestADSBClassification:
             "dbFlags", "operator", "registration", "description",
             "squawk", "emergency"
         }
-        assert set(result.keys()) == expected_keys
+        # In case of drone, there are additional keys, so check subset.
+        assert expected_keys.issubset(set(result.keys()))
         assert result["icaoType"] == "C172"
         assert result["registration"] == "N12345"
+
+    @pytest.mark.parametrize("scenario,input_data,expected_drone_class", [
+        ("Squawk 7400 overrides all", {"squawk": "7400", "desc": "DJI"}, "MILITARY_UAS"),
+        ("Military UAS String", {"flight": "USAF RQ-4"}, "MILITARY_UAS"),
+        ("Military Affiliation makes it Military UAS", {"category": "B6", "dbFlags": 1}, "MILITARY_UAS"),
+        ("UAS Manufacturer makes it Military UAS", {"ownOp": "GENERAL ATOMICS", "category": "B6"}, "MILITARY_UAS"),
+        ("Commercial UAS String", {"ownOp": "WINGCOPTER", "category": "B6"}, "COMMERCIAL_UAS"),
+        ("Civil UAS String", {"desc": "PHANTOM 4", "category": "B6"}, "CIVIL_UAS"),
+        ("Commercial Affiliation makes it Commercial UAS", {"category": "B6", "flight": "UAL1234"}, "COMMERCIAL_UAS"),
+        ("Unknown UAS default", {"category": "B6"}, "UNKNOWN_UAS"),
+        ("Drone specific string matching is case insensitive", {"flight": "skydio"}, "COMMERCIAL_UAS"),
+    ])
+    def test_drone_subclassing(self, scenario, input_data, expected_drone_class):
+        """Test the assignment of the granular drone_class property"""
+        result = classify_aircraft(input_data)
+        assert result.get("aircraft_class") == "drone", f"Scenario '{scenario}' should be classified as drone"
+        assert result.get("drone_class") == expected_drone_class, f"Scenario '{scenario}' failed drone_class check"
 
     def test_operator_constants(self):
         """Ensure critical operators are present in the constants."""
