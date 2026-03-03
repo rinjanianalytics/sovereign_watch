@@ -89,7 +89,7 @@ To be executed by the user or agent with explicit permission:
 git add frontend/package.json README.md CHANGELOG.md RELEASE_NOTES.md
 
 # 2. Commit
-git commit -m "chore(release): prepare vX.Y.Z"
+git commit -m "chore(release): vX.Y.Z - Release Name
 
 # 3. Tag
 git tag vX.Y.Z
