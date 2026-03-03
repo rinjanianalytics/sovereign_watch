@@ -1,20 +1,25 @@
-# Release - v0.13.2 - Container Stability Patch
+# Release - v0.13.3 - Globe 3D Stabilization Patch
 
-This is a fast-follow patch release focusing on Docker container stability for operators standing up Sovereign Watch on Windows host machines. It addresses a critical flaw that prevented the HF intelligence bridge (JS8Call) from starting.
+This patch focuses on stabilizing the 3D rendering pipeline for the Mapbox v3 Globe projection, addressing several graphical glitches related to layering, depth testing, and geographic scaling.
 
 ## Key Fixes
 
-- **Cross-Platform Container Builds:** Resolved an issue where Windows Git configurations would inadvertently check out shell scripts with `CRLF` line endings. This caused fatal "file not found" execution errors when Docker attempted to run `entrypoint.sh` inside the Linux JS8Call container. We have introduced strict `.gitattributes` to enforce `LF` endings for all scripts globally.
-- **Database Auth Synchronization:** Corrected environment variable defaults that caused backend authentication failures during initial TimescaleDB volume creation.
+- **Geographic Satellite Scaling:** Orbital assets now correctly restrict their maximum footprint sizes based on altitude, preventing them from scaling into massive planet-sized pyramids when zooming out.
+- **Depth Clipping & Z-Fighting:** All tactical layers (submarine cables, infrastructure, tracks) now apply aggressive Depth Biasing to ensure they remain cleanly draped on top of the 3D terrain mesh rather than clipping inside the Earth's crust when the camera is pitched.
+- **Longitude Wrapping Control:** Eliminated visual stretch artifacts around the International Date Line by automatically disabling Deck.gl's longitude wrapping when viewing the spherical globe projection.
+
+## Known Issues
+
+- **Mapbox v3 Globe Parallax:** Due to architectural limitations in Mapbox GL JS v3, the engine does not support interwoven (shared WebGL context) custom layers while in `globe` projection. Deck.gl is forced to render on a separate canvas. When the camera is pitched, operators will notice a "parallax drift" effect where the tactical layers visually separate from the globe surface. For perfectly synchronized interleaved layers on a globe, operators should toggle to the MapLibre engine.
 
 ## Upgrade Instructions
 
-To apply this patch, pull the latest code and rebuild the affected containers:
+To apply this patch, pull the latest code and rebuild the frontend container:
 
 ```bash
 # Pull latest changes
 git pull origin main
 
-# Rebuild and restart the platform (specifically JS8Call)
+# Rebuild and restart the frontend
 docker compose up -d --build
 ```

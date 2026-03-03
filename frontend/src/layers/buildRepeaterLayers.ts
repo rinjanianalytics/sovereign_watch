@@ -172,7 +172,7 @@ export function buildRepeaterLayers(
           stroked: false,
           filled: true,
           pickable: false,
-          wrapLongitude: true,
+          wrapLongitude: !globeMode,
           parameters: depthParams,
         }),
       );
@@ -227,8 +227,8 @@ export function buildRepeaterLayers(
           fontWeight: "bold",
           billboard: true,
           pickable: false,
-          wrapLongitude: true,
-          parameters: { depthTest: true, depthBias: 0 },
+          wrapLongitude: !globeMode,
+          parameters: { depthTest: true, depthBias: -100.0 },
           lineHeight: 1.3,
         }),
       );

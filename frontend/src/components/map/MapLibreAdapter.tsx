@@ -4,15 +4,15 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapAdapterProps } from './mapAdapterTypes';
 
 function DeckGLOverlay(props: any) {
-    const { globeMode, ...rest } = props;
-    const projection = globeMode ? 'globe' : 'mercator';
+    // Strip globeMode — MapboxOverlay detects globe projection automatically
+    // via getDefaultView(map) which returns GlobeView when the map is in globe mode.
+    // Both projection and _full3d are managed internally on every map `render` event.
+    const { globeMode: _globeMode, ...rest } = props;
 
-    // Key-based construction is handled by parent, but we ensure parameters are fresh
     const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({
         ...rest,
-        projection,
-        // _full3d is a DeckGL v9 experimental prop that builds an explicit depth buffer 
-        // to handle non-interleaved overlay occlusion properly on globes.
+        // _full3d reads the Mapbox depth buffer to occlude globe far-side layers.
+        // Globe view (GlobeView vs MapView) is auto-detected via getDefaultView(map).
         _full3d: true
     }));
 
@@ -25,8 +25,7 @@ function DeckGLOverlay(props: any) {
     useEffect(() => {
         if (overlay && overlay.setProps && !isDeadRef.current) {
             try {
-                // Critical: Explicitly update projection along with other props
-                overlay.setProps({ ...rest, projection });
+                overlay.setProps({ ...rest, _full3d: true });
             } catch (e) {
                 console.debug('[DeckGLOverlay] Transitioning props...');
             }

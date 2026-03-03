@@ -52,30 +52,41 @@ interface OrbitalLayerProps {
     now: number;
     showHistoryTails: boolean;
     projectionMode?: string; // Nuclear Sync: Appended to IDs to force buffer rebuilds
+    zoom?: number;
     onEntitySelect: (entity: CoTEntity | null) => void;
     onHover: (entity: CoTEntity | null, x: number, y: number) => void;
 }
 
-interface FaceDatum { polygon: number[][], entity: CoTEntity }
+interface FaceDatum { polygon: number[][], entity: CoTEntity, shade?: number }
 
 function buildGemFaces(
     satellites: CoTEntity[],
-    selectedUid: string | undefined
+    selectedUid: string | undefined,
+    zoom: number = 0
 ): FaceDatum[] {
     const faces: FaceDatum[] = [];
+    const pxToDeg = (360 / 512) / Math.pow(2, Math.max(0, zoom));
+
     for (const d of satellites) {
         const isSelected = selectedUid === d.uid;
         const alt = d.altitude || 1000;
 
-        const altScaleFactor = Math.log10(1 + alt / 1000);
-        const baseDeg = isSelected ? 0.4 : 0.28;
-        const sizeDeg = baseDeg * altScaleFactor;
+        const desiredPx = isSelected ? 12 : 6;
+        const sizeDegUnclamped = desiredPx * pxToDeg;
+        
+        // Compensate for altitude expansion: objects further from center appear structurally larger for the same degree width
+        const altRadiusScale = (6371 + (alt / 1000)) / 6371; 
+        
+        // Cap the maximum degree size to avoid absurdly huge pyramids at low zoom, 
+        // while also preventing them from turning into specs when zooming far in.
+        const sizeDeg = Math.min(Math.max((sizeDegUnclamped / altRadiusScale), 0.02), 1.0);
 
         const latRad = (d.lat * Math.PI) / 180;
-        const lonScale = 1 / Math.cos(latRad);
+        const lonScale = Math.min(1 / Math.max(0.01, Math.cos(latRad)), 10);
 
-        // Vertical apex offset: 35% of equatorial footprint radius in metres
-        const gemH = sizeDeg * 111_000 * 0.35;
+        // Vertical apex offset in meters
+        // Scale the height according to the physical width of the base to keep it a nice diamond
+        const gemH = (sizeDeg * 111_000 * altRadiusScale) * 0.6;
 
         const apex = [d.lon, d.lat, alt + gemH];
         const nadir = [d.lon, d.lat, alt - gemH];
@@ -89,17 +100,20 @@ function buildGemFaces(
             [apex, vN, vE], [apex, vE, vS], [apex, vS, vW], [apex, vW, vN],
             [nadir, vE, vN], [nadir, vS, vE], [nadir, vW, vS], [nadir, vN, vW],
         ];
-        for (const tri of tris) faces.push({ polygon: tri, entity: d });
+        const shades = [1.0, 0.75, 0.5, 0.75, 0.8, 0.6, 0.4, 0.6];
+        for (let i = 0; i < tris.length; i++) {
+            faces.push({ polygon: tris[i], entity: d, shade: shades[i] });
+        }
     }
     return faces;
 }
 
-export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, now, showHistoryTails, projectionMode, onEntitySelect, onHover }: OrbitalLayerProps) {
+export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, now, showHistoryTails, projectionMode, zoom, onEntitySelect, onHover }: OrbitalLayerProps) {
     const R_EARTH_KM = 6371;
     const sfx = projectionMode ? `-${projectionMode}` : '';
     // Pre-build gem faces for globe mode (avoids IIFE inside array spread)
     const gemFaces = projectionMode === 'globe'
-        ? buildGemFaces(satellites, selectedEntity?.uid)
+        ? buildGemFaces(satellites, selectedEntity?.uid, zoom)
         : [];
 
     return [
@@ -122,7 +136,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
             stroked: true,
             filled: true,
             pickable: false,
-            wrapLongitude: true,
+            wrapLongitude: projectionMode !== 'globe',
             parameters: { depthTest: true, depthBias: 50.0 }, // Satellite footprint: positive = furthest behind
             updateTriggers: {
                 getRadius: [selectedEntity?.uid, hoveredEntity?.uid],
@@ -201,7 +215,11 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
                 data: gemFaces,
                 getPolygon: (d: FaceDatum) => d.polygon as any,
                 extruded: false, // Z is embedded in vertex coords; no ground extrusion needed
-                getFillColor: (d: FaceDatum) => getSatColor(d.entity.detail?.category as string, 220),
+                getFillColor: (d: FaceDatum) => {
+                    const base = getSatColor(d.entity.detail?.category as string, 220);
+                    const shade = d.shade || 1.0;
+                    return [Math.round(base[0] * shade), Math.round(base[1] * shade), Math.round(base[2] * shade), base[3]];
+                },
                 pickable: true,
                 // wrapLongitude off in globe mode: billboarding + wrapLongitude = render artifacts
                 wrapLongitude: false,
@@ -240,7 +258,7 @@ export function getOrbitalLayers({ satellites, selectedEntity, hoveredEntity, no
                 billboard: true,
                 getColor: (d: CoTEntity) => getSatColor(d.detail?.category as string, 255),
                 pickable: true,
-                wrapLongitude: true,
+                wrapLongitude: projectionMode !== 'globe',
                 parameters: { depthTest: true, depthBias: 0 },
                 onHover: (info: { object?: any; x: number; y: number }) => {
                     onHover(info.object as CoTEntity ?? null, info.x, info.y);

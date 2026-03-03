@@ -25,7 +25,7 @@ export function buildInfraLayers(
     if (cablesData && filters?.showCables !== false) {
         layers.push(
             new GeoJsonLayer({
-                id: "submarine-cables-layer",
+                id: `submarine-cables-layer-${globeMode ? "globe" : "merc"}`,
                 data: cablesData,
                 pickable: true,
                 stroked: false,
@@ -50,7 +50,8 @@ export function buildInfraLayers(
                     getLineColor: 300,
                     getLineWidth: 300
                 },
-                wrapLongitude: true,
+                wrapLongitude: !globeMode,
+                parameters: globeMode ? { depthTest: true, depthBias: -210.0 } : undefined,
                 onHover: setHoveredInfra,
                 onClick: setSelectedInfra,
             })
@@ -71,7 +72,7 @@ export function buildInfraLayers(
 
         layers.push(
             new ScatterplotLayer({
-                id: "cable-stations-layer",
+                id: `cable-stations-layer-${globeMode ? "globe" : "merc"}`,
                 data: stationsData.features || [],
                 pickable: true,
                 opacity: 0.8,
@@ -97,7 +98,8 @@ export function buildInfraLayers(
                 updateTriggers: {
                     getFillColor: [cablesData]
                 },
-                wrapLongitude: true,
+                wrapLongitude: !globeMode,
+                parameters: globeMode ? { depthTest: true, depthBias: -210.0 } : undefined,
                 onHover: setHoveredInfra,
                 onClick: setSelectedInfra,
             })

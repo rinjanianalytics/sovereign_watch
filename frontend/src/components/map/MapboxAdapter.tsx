@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useEffect, useCallback } from 'react';
+import { forwardRef, useRef, useEffect } from 'react';
 import { Map, useControl, MapRef } from 'react-map-gl/mapbox';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { MapAdapterProps } from './mapAdapterTypes';
@@ -15,7 +15,15 @@ const BASEMAP_CONFIG: Record<string, boolean | string> = {
 };
 
 function DeckGLOverlay(props: any) {
-    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ ...props }));
+    const { globeMode, ...rest } = props;
+
+    // We pass _full3d so DeckGL enables full 3D perspective matrix synchronization 
+    // to match Mapbox's camera. We DO NOT pass `projection` manually because MapboxOverlay
+    // auto-detects it and syncs the internal camera FOV specifically for Mapbox.
+    const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay({ 
+        ...rest,
+        _full3d: true
+    }));
 
     const isDeadRef = useRef(false);
     useEffect(() => {
@@ -23,15 +31,20 @@ function DeckGLOverlay(props: any) {
         return () => { isDeadRef.current = true; };
     }, []);
 
+    // The official DeckGL pattern: call setProps(props) on every render so that
+    // layer changes and other non-camera props flow through correctly.
     useEffect(() => {
         if (overlay && overlay.setProps && !isDeadRef.current) {
             try {
-                overlay.setProps(props);
+                overlay.setProps({ 
+                    ...rest,
+                    _full3d: true
+                });
             } catch (e) {
                 console.debug('[DeckGLOverlay] Transitioning props...');
             }
         }
-    }, [props, overlay]);
+    }, [rest, globeMode, overlay]);
 
     const { onOverlayLoaded } = props;
     useEffect(() => {
@@ -46,6 +59,7 @@ function DeckGLOverlay(props: any) {
     return null;
 }
 
+
 const MapboxAdapter = forwardRef<MapRef, MapAdapterProps & { mapboxAccessToken?: string }>((props, ref) => {
     const { viewState, onMove, onLoad, mapStyle, mapboxAccessToken, style, onContextMenu, onClick, globeMode, deckProps } = props;
 
@@ -53,7 +67,7 @@ const MapboxAdapter = forwardRef<MapRef, MapAdapterProps & { mapboxAccessToken?:
         <Map
             ref={ref}
             onLoad={onLoad}
-            {...viewState}
+            initialViewState={viewState}
             onMove={onMove}
             mapStyle={mapStyle}
             mapboxAccessToken={mapboxAccessToken}

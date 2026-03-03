@@ -40,7 +40,7 @@ export function buildTrailLayers(
         pickable: false,
         jointRounded: true,
         capRounded: true,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: !!globeMode, depthBias: globeMode ? -100.0 : 0 },
       }),
     );
@@ -74,7 +74,7 @@ export function buildTrailLayers(
         jointRounded: true,
         capRounded: true,
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: !!globeMode, depthBias: globeMode ? -100.0 : 0 },
       }),
     );
@@ -104,7 +104,7 @@ export function buildTrailLayers(
           jointRounded: true,
           capRounded: true,
           opacity: 1.0,
-          wrapLongitude: true,
+          wrapLongitude: !globeMode,
           parameters: { depthTest: !!globeMode, depthBias: globeMode ? -100.0 : 0 },
         }),
         // Gap bridge for selection
@@ -120,7 +120,7 @@ export function buildTrailLayers(
           getWidth: 3.5,
           widthMinPixels: 2.5,
           pickable: false,
-          wrapLongitude: true,
+          wrapLongitude: !globeMode,
           parameters: { depthTest: !!globeMode, depthBias: globeMode ? -100.0 : 0 },
         }),
       );

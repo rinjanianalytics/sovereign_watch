@@ -39,7 +39,7 @@ export function buildEntityLayers(
         radiusUnits: "pixels" as const,
         getFillColor: (d: CoTEntity) => entityColor(d, 120),
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: !!globeMode, depthBias: globeMode ? -195.0 : 0 },
       }),
     );
@@ -146,7 +146,7 @@ export function buildEntityLayers(
         pickable: true,
         // wrapLongitude off in globe mode: native geographic polygons don't need it and it causes culling
         wrapLongitude: false,
-        parameters: { depthTest: true },
+        parameters: { depthTest: true, depthBias: -200.0 },
         onHover: (info: { object?: any; x: number; y: number }) => {
           if (info.object) {
             setHoveredEntity(info.object as CoTEntity);
@@ -200,7 +200,7 @@ export function buildEntityLayers(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         getColor: (d: any) => entityColor(d as CoTEntity),
         pickable: true,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: true, depthBias: 0 },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onHover: (info: { object?: any; x: number; y: number }) => {
@@ -250,7 +250,7 @@ export function buildEntityLayers(
         return entityColor(d, a);
       },
       pickable: false,
-      wrapLongitude: true,
+      wrapLongitude: !globeMode,
       parameters: { depthTest: !!globeMode, depthBias: globeMode ? -210.0 : 0 },
       updateTriggers: { getRadius: [now], getFillColor: [now] },
     }),
@@ -277,7 +277,7 @@ export function buildEntityLayers(
         stroked: true,
         filled: false,
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: !!globeMode, depthBias: globeMode ? -210.0 : 0 },
         updateTriggers: { getRadius: [now], getLineColor: [now] },
       }),
@@ -316,7 +316,7 @@ export function buildEntityLayers(
         jointRounded: true,
         capRounded: true,
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: { depthTest: false },
       }),
     );

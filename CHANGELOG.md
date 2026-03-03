@@ -1,3 +1,17 @@
+## [0.13.3] - 2026-03-02
+
+### Fixed
+
+- **Globe 3D Rendering & Projections:**
+  - Fixed an issue in Mapbox v3 Globe mode where Deck.gl layers (undersea cables, satellites, repeaters) would clip through the Earth when the camera was tilted. Added explicit `depthBias` to all layer builders (`-210.0` to `-100.0`).
+  - Implemented dynamic `wrapLongitude` disabling to prevent visual artifacting and streaking when the map is in spherical projection.
+  - Mitigated a "Planet Sized Satellite" visual bug by capping the maximum pixel-to-degree scaling radius of `OrbitalLayer` assets based on altitude, preventing over-expansion at low zoom levels.
+  - Disabled explicit forced `GlobeView` projection in the DeckGL MapboxAdapter, allowing it to natively read the Mapbox camera matrix for `_full3d` synchronization.
+
+### Known Issues
+
+- **Mapbox v3 Parallax Drift:** Mapbox GL JS v3 explicitly drops support for custom interleaved WebGL layers when rendering the Globe projection. Because Deck.gl is forced to render on a separate `<canvas>`, its 3D camera matrix exhibits minor "parallax drift" / expansion compared to the Mapbox globe when the camera is heavily pitched. Full interleaved support remains fully functional with MapLibre.
+
 ## [0.13.2] - 2026-03-02
 
 ### Fixed

@@ -64,7 +64,7 @@ export function buildJS8Layers(
         getWidth: 1,
         widthMinPixels: 1,
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         parameters: depthParams,
       }),
     );
@@ -89,7 +89,7 @@ export function buildJS8Layers(
       stroked: true,
       filled: true,
       pickable: true,
-      wrapLongitude: true,
+      wrapLongitude: !globeMode,
       parameters: depthParams,
       onHover: (info: any) => {
         if (info.object) {
@@ -129,9 +129,9 @@ export function buildJS8Layers(
         fontWeight: "bold",
         billboard: true,
         pickable: false,
-        wrapLongitude: true,
+        wrapLongitude: !globeMode,
         // For MapLibre Globe, we need depthTest enabled to prevent bleeding through the Earth
-        parameters: { depthTest: true, depthBias: 0 },
+        parameters: { depthTest: true, depthBias: -210.0 },
       }),
     );
   }

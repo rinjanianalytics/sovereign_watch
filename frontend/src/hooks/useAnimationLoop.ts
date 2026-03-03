@@ -735,6 +735,7 @@ export function useAnimationLoop({
           now,
           showHistoryTails: historyTailsRef.current,
           projectionMode: globeMode ? "globe" : "mercator",
+          zoom,
           onEntitySelect,
           onHover: (entity, x, y) => {
             if (entity) {
@@ -783,6 +784,10 @@ export function useAnimationLoop({
       ];
 
       if (mapLoaded && overlayRef.current?.setProps) {
+        // Only update layers per frame. Do NOT pass projection or _full3d here —
+        // setting projection on every frame interrupts MapboxOverlay's internal
+        // camera sync with Mapbox, causing layers to drift when rotating the globe.
+        // projection/_full3d are set once at construction in the adapter's useEffect.
         overlayRef.current.setProps({ layers });
       }
 

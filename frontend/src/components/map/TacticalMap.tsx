@@ -608,9 +608,13 @@ export function TacticalMap({
           keyboard={!globeMode}
           maxPitch={globeMode ? 0 : 85}
           deckProps={{
-            key: `overlay-${globeMode ? "globe" : "merc"}-${enable3d ? "3d" : "2d"}`, // Force remount on projection/3D change 
+            key: `overlay-${globeMode ? "globe" : "merc"}-${enable3d ? "3d" : "2d"}`, // Force remount on projection/3D change
             id: "tactical-overlay",
-            // The user requested to keep interleave OFF for stability
+            // Globe mode: interleaved shares the Mapbox WebGL context and depth buffer.
+            // The globe sphere writes depth when rendered, so DeckGL layers that come
+            // after in the render pipeline correctly clip far-side geometry via depthTest.
+            // Previous attempts failed due to _full3d conflicts + per-frame projection
+            // being set — both are now removed, so this should work cleanly.
             interleaved: false,
             globeMode,
             onOverlayLoaded: handleOverlayLoaded,
