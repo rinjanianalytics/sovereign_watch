@@ -10,3 +10,7 @@
 **Vulnerability:** Overly Permissive CORS
 **Learning:** js8call/server.py had an overly permissive CORS configuration (allow_origins=["*"]) combined with a missing Content-Security-Policy (CSP) and HSTS. This misconfiguration posed a high risk since the server bridges WebSockets to local hardware (KiwiSDR / JS8Call radio service), meaning malicious third-party websites could initiate connections to this local server, exposing or manipulating local infrastructure.
 **Prevention:** Never use wildcard CORS in applications that interface with local hardware or user credentials. Bind allow_origins to an explicit whitelist via environment variable (e.g., ALLOWED_ORIGINS). Apply standard security headers (CSP, HSTS, X-Content-Type-Options) symmetrically across all services and components, not just the primary backend API.
+## 2025-05-24 - Eliminate shell injection vulnerability by avoiding `shell=True`
+**Vulnerability:** Shell Injection
+**Learning:** `js8call/server.py` used `subprocess.Popen(cmd, shell=True)` with dynamically generated command strings containing shell operators (`|`). While `shlex.quote` was used, relying on `shell=True` introduces significant shell injection risks if user inputs or configuration bypass validation or quoting logic.
+**Prevention:** Avoid `shell=True` entirely. Refactor shell pipelines into multiple `subprocess.Popen` calls connected via standard Python I/O piping (e.g., `p2 = subprocess.Popen(..., stdin=p1.stdout)` and closing `p1.stdout` in the parent process) using array-based command arguments.

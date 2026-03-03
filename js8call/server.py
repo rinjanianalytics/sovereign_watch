@@ -133,14 +133,16 @@ def _start_kiwi_pipeline(host: str, port: int, freq: int, mode: str) -> None:
     if mode not in _KIWI_VALID_MODES:
         raise ValueError(f"Mode must be one of {sorted(_KIWI_VALID_MODES)}: {mode!r}")
 
-    cmd = (
-        f"python3 /opt/kiwiclient/kiwirecorder.py "
-        f"--nc -s {shlex.quote(host)} -p {port} -f {freq} -m {shlex.quote(mode)} --OV "
-        f"2>/tmp/kiwirecorder.log "
-        f"| pacat --playback --format=s16le --rate=12000 --channels=1 "
-        f"--device=KIWI_RX --stream-name=KiwiSDR-RX-Feed --latency-msec=100 "
-        f"2>/tmp/pacat.log"
-    )
+    # Sentinel: Replaced shell=True with secure subprocess pipelines to eliminate shell injection vulnerability
+    cmd1 = [
+        "python3", "/opt/kiwiclient/kiwirecorder.py",
+        "--nc", "-s", host, "-p", str(port), "-f", str(freq), "-m", mode, "--OV"
+    ]
+
+    cmd2 = [
+        "pacat", "--playback", "--format=s16le", "--rate=12000", "--channels=1",
+        "--device=KIWI_RX", "--stream-name=KiwiSDR-RX-Feed", "--latency-msec=100"
+    ]
 
     with _kiwi_lock:
         # Terminate any existing pipeline first
@@ -155,13 +157,17 @@ def _start_kiwi_pipeline(host: str, port: int, freq: int, mode: str) -> None:
                     pass
             _kiwi_proc = None
 
-        proc = subprocess.Popen(cmd, shell=True)
-        _kiwi_proc = proc
+        with open('/tmp/kiwirecorder.log', 'w') as kiwilog, open('/tmp/pacat.log', 'w') as pacatlog:
+            p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, stderr=kiwilog)
+            p2 = subprocess.Popen(cmd2, stdin=p1.stdout, stderr=pacatlog)
+            p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+
+        _kiwi_proc = p2
         _kiwi_config = {"host": host, "port": port, "freq": freq, "mode": mode}
 
     logger.info(
         "KiwiSDR pipeline started: %s:%d @ %d kHz %s (PID %d)",
-        host, port, freq, mode, proc.pid,
+        host, port, freq, mode, p2.pid,
     )
 
 
