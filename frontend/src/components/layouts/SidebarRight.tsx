@@ -152,10 +152,10 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
   onClose,
   onCenterMap
 }) => {
-  const [showInspector, setShowInspector] = React.useState(false);
+  const [showInspector, setShowInspector] = useState(false);
 
   // Reset inspector when entity changes
-  React.useEffect(() => {
+  useEffect(() => {
     setShowInspector(false);
   }, [entity?.uid]);
 

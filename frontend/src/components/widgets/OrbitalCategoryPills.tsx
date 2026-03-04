@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Satellite, Navigation, Cloud, Wifi, Eye, Globe } from 'lucide-react';
+import { Navigation, Cloud, Wifi, Eye, Globe } from 'lucide-react';
 
 interface OrbitalCategoryPillsProps {
   filters: any;
