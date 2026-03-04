@@ -12,7 +12,6 @@ situational awareness.
 import logging
 import os
 import json
-from typing import Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query

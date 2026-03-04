@@ -129,6 +129,27 @@ export interface RepeaterStation {
   modes: string[];      // e.g. ["FM Analog", "D-Star"]
 }
 
+export interface PassPoint {
+  t: string;
+  az: number;
+  el: number;
+  slant_range_km: number;
+}
+
+export interface PassResult {
+  norad_id: string;
+  name: string;
+  category: string;
+  aos: string;
+  tca: string;
+  los: string;
+  max_elevation: number;
+  aos_azimuth: number;
+  los_azimuth: number;
+  duration_seconds: number;
+  points: PassPoint[];
+}
+
 export interface MapFilters {
   showAir: boolean;
   showSea: boolean;

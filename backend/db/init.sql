@@ -48,6 +48,20 @@ CREATE INDEX IF NOT EXISTS ix_tracks_entity_time ON tracks (entity_id, time DESC
 CREATE INDEX IF NOT EXISTS ix_tracks_entity_id_trgm ON tracks USING gin (entity_id gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS ix_tracks_meta_callsign_trgm ON tracks USING gin ((meta->>'callsign') gin_trgm_ops);
 
+-- TABLE: satellites (Latest TLE + orbital metadata per NORAD ID)
+-- No hypertable, no retention — plain lookup table upserted by the Historian.
+CREATE TABLE IF NOT EXISTS satellites (
+    norad_id        TEXT PRIMARY KEY,
+    name            TEXT,
+    category        TEXT,
+    tle_line1       TEXT NOT NULL,
+    tle_line2       TEXT NOT NULL,
+    period_min      FLOAT,
+    inclination_deg FLOAT,
+    eccentricity    FLOAT,
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- TABLE: intel_reports (Semantic Data)
 CREATE TABLE IF NOT EXISTS intel_reports (
     id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,

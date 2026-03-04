@@ -18,7 +18,6 @@ with patch("asyncpg.create_pool", new=AsyncMock()) as mock_pool, \
      patch("aiokafka.AIOKafkaConsumer", new=MagicMock()) as mock_kafka:
 
     from main import app
-    from core.config import settings
 
 @pytest.mark.asyncio
 async def test_track_history_limit_exceeded():

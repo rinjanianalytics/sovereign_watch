@@ -46,14 +46,6 @@ async def analyze_track(uid: str, req: AnalyzeRequest):
 
     # 2. Fetch Contextual Intel
     # Calling the SQL function we defined in init.sql
-    intel_query = """
-        SELECT content, distance
-        FROM get_contextual_intel(
-            (SELECT embedding FROM intel_reports LIMIT 1), -- Placeholder: Real app needs query embedding generation
-            50000, -- 50km
-            ST_GeomFromText($1, 4326)
-        )
-    """
     # Note: In a real implementation, we need to generate an embedding for the "Query"
     # "What is suspicious about this track?" -> Vector
     # For now, we'll demonstrate the logic flow.

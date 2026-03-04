@@ -36,6 +36,21 @@ async def historian_task():
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, ST_SetSRID(ST_MakePoint($5, $4), 4326))
         """
 
+        satellite_upsert_sql = """
+            INSERT INTO satellites (norad_id, name, category, tle_line1, tle_line2,
+                                    period_min, inclination_deg, eccentricity, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            ON CONFLICT (norad_id) DO UPDATE SET
+                tle_line1       = EXCLUDED.tle_line1,
+                tle_line2       = EXCLUDED.tle_line2,
+                name            = EXCLUDED.name,
+                category        = EXCLUDED.category,
+                period_min      = EXCLUDED.period_min,
+                inclination_deg = EXCLUDED.inclination_deg,
+                eccentricity    = EXCLUDED.eccentricity,
+                updated_at      = NOW()
+        """
+
         async for msg in consumer:
             try:
                 data = json.loads(msg.value.decode('utf-8'))
@@ -79,6 +94,30 @@ async def historian_task():
                 })
 
                 batch.append((ts, uid, etype, lat, lon, alt, speed, heading, meta))
+
+                # --- Satellite TLE Upsert (orbital_raw messages only) ---
+                tle_line1 = classification.get("tle_line1")
+                tle_line2 = classification.get("tle_line2")
+                if tle_line1 and tle_line2:
+                    norad_id = classification.get("norad_id") or uid
+                    sat_name = classification.get("name") or callsign
+                    category = classification.get("category")
+                    period_min = classification.get("period_min")
+                    inclination_deg = classification.get("inclination_deg")
+                    eccentricity = classification.get("eccentricity")
+                    if db.pool:
+                        try:
+                            async with db.pool.acquire() as conn:
+                                await conn.execute(
+                                    satellite_upsert_sql,
+                                    str(norad_id), sat_name, category,
+                                    tle_line1, tle_line2,
+                                    float(period_min) if period_min is not None else None,
+                                    float(inclination_deg) if inclination_deg is not None else None,
+                                    float(eccentricity) if eccentricity is not None else None,
+                                )
+                        except Exception as sat_err:
+                            logger.error(f"Historian satellite upsert error: {sat_err}")
 
                 # --- Batch Flush Logic ---
                 now = time.time()
