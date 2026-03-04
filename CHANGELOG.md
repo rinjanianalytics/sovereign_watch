@@ -1,3 +1,32 @@
+## [0.16.0] - 2026-03-04
+
+### Added
+
+- **Satellite Inspector (SidebarRight):** `SatelliteInspectorSection` sub-component shows `inclination_deg` and `eccentricity` in the identity header; live azimuth, elevation, and slant range computed at 1 Hz via `satAzEl()` with green highlight when elevation ≥ 10°; next-pass AOS countdown, max elevation, and duration sourced from `usePassPredictions` filtered by NORAD ID.
+- **Pass Predictor UX — Live Countdown:** Each pass row in `PassPredictorWidget` shows a live `T-HH:MM:SS` countdown to AOS. In-progress passes pulse purple and switch to a LOS countdown.
+- **Pass Predictor UX — Min Elevation Filter:** `MIN EL: [10° ▾]` dropdown (0/5/10/15/20/30°) added to the pass list header, wired to `usePassPredictions` `minElevation` option.
+- **Pass Predictor UX — CSV Export:** Download icon in the pass list header serialises `passes[]` to a `passes_YYYY-MM-DD.csv` file via `Blob` + `createObjectURL`.
+- **Category Counts per Pill:** `OrbitalCategoryPills` fetches `GET /api/orbital/stats` on mount and renders per-category satellite counts (e.g., `GPS (127)`).
+- **NORAD ID / Name Search:** Compact search input above category pills filters the pass list client-side by name or NORAD ID substring; no additional API call.
+- **Predicted Ground Track PathLayer:** When a satellite is selected and history tails are enabled, `OrbitalMap` fetches `/api/orbital/groundtrack/{norad_id}?minutes=90` and renders it as a dashed `PathLayer` (future orbit) via `predictedGroundTrackRef` threaded through `useAnimationLoop`.
+- **`GET /api/orbital/stats` Endpoint:** Returns `COUNT GROUP BY category` from the `satellites` table for the category-pill UI.
+- **Redis Caching for Pass Predictions:** Pass prediction results are cached in Redis for 5 minutes, keyed by `orbital:passes:{lat}:{lon}:{hours}:{el}:{norad_ids}:{limit}`. Falls back gracefully when Redis is unavailable.
+- **Pass Prediction `limit` Param:** `GET /api/orbital/passes` gains a `limit` query parameter (max 500) to cap results returned.
+- **`useMissionLocation` Hook:** Extracted shared observer-location resolution (getMissionArea + env-var fallback) used by both `OrbitalSidebarLeft` and `SidebarRight`.
+- **`usePassPredictions` `skip` Option:** Suppresses fetches when not applicable (used by `SatelliteInspectorSection` for non-satellite entities).
+- **`satAzEl()` Utility:** New `geoUtils.ts` export computing observer→satellite azimuth, elevation, and slant range using spherical ECEF/ENZ math.
+- **`GroundTrackPoint` Type:** Exported from `OrbitalLayer.tsx` for use across the ground track data pipeline.
+
+### Changed
+
+- **`OrbitalSidebarLeft`:** Refactored observer location resolution to `useMissionLocation`; `minElevation` state now wired to `usePassPredictions`; search input added above category pills.
+- **`SidebarRight`:** Normalised `React.useState`/`React.useEffect` to destructured `useState`/`useEffect`.
+
+### Removed
+
+- **`OrbitalDashboard.tsx`:** Deleted — confirmed unused (App.tsx renders `OrbitalMap` + `OrbitalSidebarLeft` directly). 130 lines of dead code removed.
+- **Stale `Satellite` icon import** removed from `OrbitalCategoryPills.tsx`.
+
 ## [0.15.0] - 2026-03-04
 
 ### Added

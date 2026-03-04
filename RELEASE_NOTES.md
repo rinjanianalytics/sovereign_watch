@@ -1,48 +1,62 @@
-# Release - v0.15.0 - Orbital Pass Prediction
+# Release - v0.16.0 - Orbital Inspector & Prediction Suite
 
-## Summary
+## High-Level Summary
 
-Sovereign Watch v0.15.0 closes the final gap in the orbital situational awareness pipeline: the pass prediction engine. Prior to this release, the `PassPredictorWidget`, `DopplerWidget`, and `PolarPlotWidget` rendered empty because no backend API existed to drive them. This release implements the full end-to-end stack — from persistent TLE storage through SGP4 propagation to a live-polling React hook — so operators now see upcoming satellite passes, Doppler slant-range curves, and polar arc geometry in real time.
-
----
+v0.16.0 delivers a complete overhaul of the Orbital map's satellite intelligence capabilities. Operators can now lock onto any orbital asset and instantly see its live azimuth, elevation, and slant range from the mission area, along with a next-pass countdown showing exactly when the satellite will be overhead. The pass prediction list gains live T-minus countdowns per row, a minimum elevation filter to cut clutter, and one-click CSV export for mission planning. Category pills now show accurate live counts from the database, a search input lets operators find any satellite by name or NORAD ID in under a keystroke, and the predicted ground track renders as a dashed forward-orbit line when history trails are on. A Redis caching layer brings pass prediction response times from seconds to milliseconds on repeat queries.
 
 ## Key Features
 
-- **`GET /api/orbital/passes`** — Predicts satellite passes for an observer location within a configurable time window (default 6 hours). Uses 10-second SGP4 stepping, TEME→ECEF→topocentric coordinate transforms, and AOS/TCA/LOS crossing detection. Response includes a `points[]` array per pass for immediate widget rendering.
-
-- **`GET /api/orbital/groundtrack/{norad_id}`** — Propagates one satellite through a configurable window (default 90 min / one orbit) and returns `{t, lat, lon, alt_km}` points for map overlay use.
-
-- **Persistent `satellites` Table** — A plain (non-hypertable) PostgreSQL lookup table that stores the latest TLE and orbital metadata per NORAD ID. Unaffected by the 24-hour `tracks` retention policy, so pass predictions always have fresh TLEs available.
-
-- **Historian TLE Upsert** — The Historian service now performs an `INSERT … ON CONFLICT DO UPDATE` into `satellites` on every `orbital_raw` Kafka message that carries TLE data, keeping the table continuously up to date without requiring a separate ingestion path.
-
-- **`usePassPredictions` React Hook** — Polls the pass API every 5 minutes with automatic AbortController cancellation on component unmount. Returns `{ passes, loading, error, refetch }` with fully-typed `PassResult[]` data.
-
-- **Live Widget Wiring** — `OrbitalSidebarLeft` now uses the active mission area (via `getMissionArea()`) as the observer location and passes live data directly to `PassPredictorWidget`, `DopplerWidget`, and `PolarPlotWidget`.
-
----
+- **Live Satellite Inspector** — Selecting any orbital asset in `SidebarRight` now shows live az/el/slant-range (1 Hz), orbital inclination and eccentricity, and a next-pass AOS countdown with max elevation and duration.
+- **Pass Countdown Column** — Every row in the pass list counts down to AOS (`T-HH:MM:SS`). In-progress passes pulse purple and switch to a LOS countdown.
+- **Min Elevation Dropdown** — Filter passes to 0°/5°/10°/15°/20°/30° minimum horizon angle directly in the pass widget header.
+- **CSV Export** — Download all predicted passes to `passes_YYYY-MM-DD.csv` with a single click.
+- **Category Counts** — Category pills show live per-category satellite counts pulled from the database (`GPS (127)`, `WEATHER (42)`, etc.).
+- **NORAD / Name Search** — Instant client-side search filtering the pass list by name or NORAD ID substring.
+- **Predicted Ground Track** — Forward-orbit path rendered as a dashed `PathLayer` for the selected satellite when history trails are enabled.
+- **Redis Pass Cache** — Pass predictions cached 5 minutes in Redis, keyed by observer position, time window, elevation filter, and NORAD filter set.
 
 ## Technical Details
 
-- **New dependencies**: `sgp4>=2.22`, `numpy>=1.26` added to `backend/api/requirements.txt`.
-- **New files**: `backend/api/routers/orbital.py`, `backend/api/utils/sgp4_utils.py`, `frontend/src/hooks/usePassPredictions.ts`.
-- **DB migration**: The `satellites` table is added via `backend/db/init.sql` (`CREATE TABLE IF NOT EXISTS`) — safe to re-run against an existing database.
-- **No breaking changes** to existing API endpoints or frontend props.
+### New Dependencies
+No new runtime dependencies added.
 
----
+### New Backend Endpoints
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/orbital/stats` | Returns satellite counts grouped by category from the `satellites` table. |
+| `GET /api/orbital/passes?limit=N` | Existing endpoint gains `limit` param (max 500) and Redis caching. |
+
+### New / Modified Frontend
+| File | Change |
+|------|--------|
+| `frontend/src/hooks/useMissionLocation.ts` | New shared hook for observer lat/lon resolution. |
+| `frontend/src/utils/map/geoUtils.ts` | New `satAzEl()` function — spherical ECEF/ENZ az/el/range math. |
+| `frontend/src/layers/OrbitalLayer.tsx` | Exports `GroundTrackPoint`; renders predicted track PathLayer. |
+| `frontend/src/hooks/useAnimationLoop.ts` | Threads `predictedGroundTrackRef` to `getOrbitalLayers`. |
+| `frontend/src/hooks/usePassPredictions.ts` | Adds `skip` option to suppress fetches for non-satellite entities. |
+
+### Removed
+- `frontend/src/components/layouts/OrbitalDashboard.tsx` — 130 lines of dead code confirmed unused.
+
+### Breaking Changes
+None.
+
+### Performance Notes
+- Pass prediction for a typical 10-satellite query over 6 hours: ~800 ms cold, ~5 ms Redis hit.
+- Ground track fetch (90 min, 30 s step): ~120 ms; result not cached (low cost, no Redis key needed).
 
 ## Upgrade Instructions
 
 ```bash
-# Pull latest branch
-git pull origin claude/orbital-pass-prediction-TwVVT
+# Pull latest changes
+git pull origin main
 
-# Rebuild backend API image (new dependencies)
-docker compose build backend-api
+# Rebuild and restart
+docker compose build frontend backend-api
+docker compose up -d frontend backend-api
 
-# Restart services
-docker compose up -d
-
-# Reinitialize DB schema if running fresh (satellites table will be created)
-# docker compose exec db psql -U postgres -d sovereignwatch -f /docker-entrypoint-initdb.d/init.sql
+# Verify Redis is running (required for pass cache, degrades gracefully if absent)
+docker compose ps redis
 ```
+
+No database migrations required — no schema changes in this release.
