@@ -47,6 +47,18 @@ import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+# Native KiwiSDR client modules (Phase 2 / Phase 1)
+try:
+    from kiwi_client import KiwiClient
+    from kiwi_directory import KiwiDirectory, KiwiNode
+    _HAS_NATIVE_KIWI = True
+except ImportError as _ie:
+    logger.warning("Native KiwiSDR modules not available: %s", _ie)
+    _HAS_NATIVE_KIWI = False
+    KiwiClient = None       # type: ignore
+    KiwiDirectory = None    # type: ignore
+    KiwiNode = None         # type: ignore
+
 # pyjs8call has been removed and replaced with a native AsyncIO DatagramProtocol 
 # to mitigate the Qt headless socket thread crash bug on the TCP API.
 
@@ -69,6 +81,10 @@ KIWI_HOST = os.getenv("KIWI_HOST", "kiwisdr.example.com")
 KIWI_PORT = int(os.getenv("KIWI_PORT", "8073"))
 KIWI_FREQ = int(os.getenv("KIWI_FREQ", "14074"))
 KIWI_MODE = os.getenv("KIWI_MODE", "usb")
+# Set KIWI_USE_SUBPROCESS=1 to fall back to the kiwirecorder subprocess pipeline
+KIWI_USE_SUBPROCESS = os.getenv("KIWI_USE_SUBPROCESS", "0") == "1"
+# Set KIWI_AUTO_SELECT=1 to auto-connect to the nearest directory node on startup
+KIWI_AUTO_SELECT = os.getenv("KIWI_AUTO_SELECT", "0") == "1"
 
 # ---------------------------------------------------------------------------
 # Global state
@@ -101,6 +117,18 @@ _station_registry: dict[str, dict] = {}
 _kiwi_proc: Optional[subprocess.Popen] = None
 _kiwi_lock = threading.Lock()
 _kiwi_config: dict = {}
+
+# Native KiwiSDR client state (Phase 2 — default when KIWI_USE_SUBPROCESS=0)
+_kiwi_native: Optional["KiwiClient"] = None
+_kiwi_directory: Optional["KiwiDirectory"] = None
+_pacat_proc: Optional[subprocess.Popen] = None
+
+# Failover tracking (Phase 3)
+_failover_count: int = 0
+_last_failover_at: Optional[str] = None
+_failover_last_attempt: float = 0.0
+FAILOVER_COOLDOWN: float = 10.0     # seconds between attempts
+FAILOVER_MAX_CANDIDATES: int = 3
 
 
 # ===========================================================================
@@ -193,9 +221,144 @@ def _stop_kiwi_pipeline() -> None:
 
 
 def _kiwi_is_running() -> bool:
-    """Return True if the pipeline subprocess is alive."""
+    """Return True if KiwiSDR is connected (native client or subprocess)."""
+    if not KIWI_USE_SUBPROCESS and _HAS_NATIVE_KIWI and _kiwi_native is not None:
+        return _kiwi_native.is_connected
     with _kiwi_lock:
         return _kiwi_proc is not None and _kiwi_proc.poll() is None
+
+
+# ===========================================================================
+# Native KiwiSDR Client Helpers (Phase 2 / Phase 3)
+# ===========================================================================
+
+def _start_pacat() -> Optional[subprocess.Popen]:
+    """Start a persistent pacat playback process that reads from stdin."""
+    try:
+        proc = subprocess.Popen(
+            [
+                "pacat", "--playback", "--raw",
+                "--format=s16le", "--rate=12000", "--channels=1",
+                "--device=KIWI_RX", "--stream-name=KiwiSDR-RX-Native",
+            ],
+            stdin=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("pacat playback process started (PID %d)", proc.pid)
+        return proc
+    except Exception as exc:
+        logger.warning("pacat startup failed (PulseAudio not available?): %s", exc)
+        return None
+
+
+def _write_audio(pcm: bytes) -> None:
+    """Write a PCM chunk to the persistent pacat process stdin."""
+    global _pacat_proc
+    if _pacat_proc is None or _pacat_proc.poll() is not None:
+        # pacat died — attempt restart
+        _pacat_proc = _start_pacat()
+    if _pacat_proc and _pacat_proc.stdin:
+        try:
+            _pacat_proc.stdin.write(pcm)
+        except BrokenPipeError:
+            _pacat_proc = None  # will be restarted on next chunk
+
+
+async def _broadcast_json(payload: dict) -> None:
+    """Broadcast a JSON payload directly to all active WebSocket clients."""
+    dead: list[WebSocket] = []
+    for ws in _ws_clients:
+        try:
+            await ws.send_json(payload)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        _ws_clients.remove(ws)
+
+
+def _kiwi_status_callback(status: dict) -> None:
+    """
+    Called by KiwiClient.on_status — bridges the async task back to the
+    message queue so KIWI.STATUS events reach WebSocket clients.
+    Also keeps _kiwi_config in sync for REST endpoints.
+    """
+    global _kiwi_config
+    payload = {
+        "type": "KIWI.STATUS",
+        **status,
+        "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
+    }
+    _enqueue_from_thread(payload)
+    if status.get("connected"):
+        _kiwi_config = {
+            "host": status.get("host", ""),
+            "port": status.get("port", 0),
+            "freq": status.get("freq", 0),
+            "mode": status.get("mode", ""),
+        }
+    else:
+        _kiwi_config = {}
+
+
+def _kiwi_disconnect_callback(close_code: int) -> None:
+    """
+    Called by KiwiClient on unexpected disconnect.
+    Schedules the async failover coroutine thread-safely onto the event loop.
+    """
+    logger.warning(
+        "KiwiClient disconnected unexpectedly (code=%d) — scheduling failover", close_code
+    )
+    if _event_loop is not None:
+        asyncio.run_coroutine_threadsafe(_async_failover("connection_lost"), _event_loop)
+
+
+async def _async_failover(reason: str) -> None:
+    """
+    Try to reconnect to the next nearest available KiwiSDR node.
+    Rate-limited by FAILOVER_COOLDOWN; tries up to FAILOVER_MAX_CANDIDATES nodes.
+    """
+    global _failover_count, _last_failover_at, _failover_last_attempt
+
+    now = time.monotonic()
+    if now - _failover_last_attempt < FAILOVER_COOLDOWN:
+        logger.debug("Failover cooldown active — skipping")
+        return
+    _failover_last_attempt = now
+
+    if _kiwi_directory is None or _kiwi_native is None:
+        return
+
+    old_host = _kiwi_native.config.get("host", "")
+    old_freq = _kiwi_native.config.get("freq", KIWI_FREQ)
+    old_mode = _kiwi_native.config.get("mode", KIWI_MODE)
+
+    my_lat, my_lon = maidenhead_to_latlon(MY_GRID)
+    candidates = [
+        n for n in _kiwi_directory.get_nodes(old_freq, my_lat, my_lon)
+        if n.host != old_host
+    ][:FAILOVER_MAX_CANDIDATES]
+
+    for node in candidates:
+        try:
+            await _kiwi_native.connect(node.host, node.port, old_freq, old_mode)
+            _failover_count += 1
+            _last_failover_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            logger.warning("Failover: %s → %s (reason: %s)", old_host, node.host, reason)
+            await _broadcast_json({
+                "type": "KIWI.FAILOVER",
+                "from": old_host,
+                "to": node.host,
+                "reason": reason,
+                "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
+            })
+            return
+        except Exception as exc:
+            logger.warning("Failover candidate %s failed: %s", node.host, exc)
+
+    await _broadcast_json({
+        "type": "KIWI.ERROR",
+        "message": "No available KiwiSDR nodes for failover",
+    })
 
 
 # ===========================================================================
@@ -421,43 +584,88 @@ class JS8CallUDPProtocol(asyncio.DatagramProtocol):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _event_loop, _message_queue, js8_client_udp_transport
+    global _kiwi_native, _kiwi_directory, _pacat_proc
 
-    # NEW-001: lifespan() is an async context manager — get_running_loop() is
-    # the correct API here. get_event_loop() emits DeprecationWarning in
-    # Python 3.10+ when called inside a coroutine and will raise RuntimeError
-    # in a future release. This closes the missed instance from BUG-011.
     _event_loop = asyncio.get_running_loop()
     _message_queue = asyncio.Queue(maxsize=500)
     broadcaster = asyncio.create_task(_queue_broadcaster())
 
-    try:
-        _start_kiwi_pipeline(KIWI_HOST, KIWI_PORT, KIWI_FREQ, KIWI_MODE)
-    except Exception as exc:
-        logger.warning("KiwiSDR pipeline startup failed (will retry via UI): %s", exc)
+    # ── KiwiSDR setup ──────────────────────────────────────────────────────
+    if KIWI_USE_SUBPROCESS or not _HAS_NATIVE_KIWI:
+        # Legacy subprocess path
+        try:
+            _start_kiwi_pipeline(KIWI_HOST, KIWI_PORT, KIWI_FREQ, KIWI_MODE)
+        except Exception as exc:
+            logger.warning("KiwiSDR pipeline startup failed (will retry via UI): %s", exc)
+    else:
+        # Native client path (Phase 2)
+        _pacat_proc = _start_pacat()
+        _kiwi_native = KiwiClient(
+            on_audio=_write_audio,
+            on_status=_kiwi_status_callback,
+            on_disconnect=_kiwi_disconnect_callback,
+        )
+        # Phase 1: start node directory (non-blocking initial fetch)
+        _kiwi_directory = KiwiDirectory()
+        dir_task = asyncio.create_task(_kiwi_directory.refresh(), name="kiwi-dir-initial")
+        asyncio.create_task(_kiwi_directory.auto_refresh_loop(), name="kiwi-dir-refresh")
 
-    # Try to bind the UDP listener with retries
+        # Determine startup node
+        connect_host, connect_port = KIWI_HOST, KIWI_PORT
+        if KIWI_AUTO_SELECT:
+            # Wait for initial directory fetch to complete before auto-selecting
+            try:
+                await asyncio.wait_for(asyncio.shield(dir_task), timeout=12.0)
+                my_lat, my_lon = maidenhead_to_latlon(MY_GRID)
+                nearest = _kiwi_directory.get_nodes(KIWI_FREQ, my_lat, my_lon, limit=1)
+                if nearest:
+                    connect_host = nearest[0].host
+                    connect_port = nearest[0].port
+                    logger.info("KIWI_AUTO_SELECT: nearest node → %s:%d", connect_host, connect_port)
+            except asyncio.TimeoutError:
+                logger.warning("KIWI_AUTO_SELECT: directory fetch timed out, using KIWI_HOST")
+
+        if connect_host and connect_host != "kiwisdr.example.com":
+            try:
+                await _kiwi_native.connect(connect_host, connect_port, KIWI_FREQ, KIWI_MODE)
+            except Exception as exc:
+                logger.warning("KiwiSDR native client startup failed (will retry via UI): %s", exc)
+
+    # ── UDP listener (JS8Call) ─────────────────────────────────────────────
     for attempt in range(1, 6):
         try:
-            logger.info(f"Starting UDP listener on {JS8CALL_HOST}:{JS8CALL_UDP_CLIENT_PORT} (attempt {attempt}/5)...")
+            logger.info(
+                "Starting UDP listener on %s:%d (attempt %d/5)...",
+                JS8CALL_HOST, JS8CALL_UDP_CLIENT_PORT, attempt,
+            )
             transport, protocol = await _event_loop.create_datagram_endpoint(
                 lambda: JS8CallUDPProtocol(),
-                local_addr=(JS8CALL_HOST, JS8CALL_UDP_CLIENT_PORT)
+                local_addr=(JS8CALL_HOST, JS8CALL_UDP_CLIENT_PORT),
             )
             js8_client_udp_transport = transport
-            logger.info(f"UDP listener successfully bound to {JS8CALL_HOST}:{JS8CALL_UDP_CLIENT_PORT}")
+            logger.info(
+                "UDP listener bound to %s:%d", JS8CALL_HOST, JS8CALL_UDP_CLIENT_PORT
+            )
             break
         except Exception as exc:
-            logger.warning(f"Failed to start UDP listener on port {JS8CALL_UDP_CLIENT_PORT}: {exc}")
+            logger.warning("Failed to bind UDP listener (port %d): %s", JS8CALL_UDP_CLIENT_PORT, exc)
             if attempt < 5:
                 await asyncio.sleep(2)
             else:
-                logger.error(f"Could not bind UDP listener after 5 attempts.")
+                logger.error("Could not bind UDP listener after 5 attempts.")
                 js8_client_udp_transport = None
 
     yield
 
+    # ── Shutdown ───────────────────────────────────────────────────────────
     broadcaster.cancel()
-    _stop_kiwi_pipeline()
+    if KIWI_USE_SUBPROCESS or not _HAS_NATIVE_KIWI:
+        _stop_kiwi_pipeline()
+    else:
+        if _kiwi_native:
+            await _kiwi_native.disconnect()
+        if _pacat_proc and _pacat_proc.poll() is None:
+            _pacat_proc.terminate()
     if js8_client_udp_transport:
         js8_client_udp_transport.close()
     logger.info("Bridge server shutdown complete")
@@ -638,7 +846,7 @@ async def ws_js8(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "STATION_LIST", "stations": stations})
 
             # ------------------------------------------------------------------
-            # Action: SET_KIWI – (re)connect KiwiSDR pipeline to a new target
+            # Action: SET_KIWI – (re)connect KiwiSDR to a new target node
             # Payload: {"action": "SET_KIWI", "host": "sdr.example.com",
             #           "port": 8073, "freq": 14074, "mode": "usb"}
             # ------------------------------------------------------------------
@@ -647,47 +855,62 @@ async def ws_js8(websocket: WebSocket) -> None:
                 port = int(cmd.get("port", 8073))
                 freq = int(cmd.get("freq", 14074))
                 mode = str(cmd.get("mode", "usb")).lower().strip()
-                try:
-                    # BUG-011: get_event_loop() is deprecated in Python 3.10+;
-                    # get_running_loop() is correct inside a running coroutine.
-                    await asyncio.get_running_loop().run_in_executor(
-                        None,
-                        lambda: _start_kiwi_pipeline(host, port, freq, mode),
-                    )
-                    _enqueue_from_thread({
-                        "type": "KIWI.STATUS",
-                        "connected": True,
-                        "host": host,
-                        "port": port,
-                        "freq": freq,
-                        "mode": mode,
-                        "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
-                    })
-                except ValueError as exc:
-                    await websocket.send_json({
-                        "type": "ERROR",
-                        "message": f"SET_KIWI validation: {exc}",
-                    })
-                except Exception as exc:
-                    await websocket.send_json({
-                        "type": "ERROR",
-                        "message": f"SET_KIWI failed: {exc}",
-                    })
+
+                if KIWI_USE_SUBPROCESS or not _HAS_NATIVE_KIWI:
+                    # Legacy subprocess path
+                    try:
+                        await asyncio.get_running_loop().run_in_executor(
+                            None,
+                            lambda: _start_kiwi_pipeline(host, port, freq, mode),
+                        )
+                        _enqueue_from_thread({
+                            "type": "KIWI.STATUS",
+                            "connected": True,
+                            "host": host, "port": port,
+                            "freq": freq, "mode": mode,
+                            "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
+                        })
+                    except ValueError as exc:
+                        await websocket.send_json({"type": "ERROR", "message": f"SET_KIWI validation: {exc}"})
+                    except Exception as exc:
+                        await websocket.send_json({"type": "ERROR", "message": f"SET_KIWI failed: {exc}"})
+                else:
+                    # Native client path (Phase 2)
+                    if _kiwi_native is None:
+                        await websocket.send_json({"type": "ERROR", "message": "KiwiClient not initialised"})
+                        continue
+                    try:
+                        cfg = _kiwi_native.config
+                        same_node = (
+                            cfg.get("host") == host
+                            and cfg.get("port") == port
+                            and _kiwi_native.is_connected
+                        )
+                        if same_node:
+                            # Lossless retune — no reconnect, no dead audio
+                            await _kiwi_native.tune(float(freq), mode)
+                        else:
+                            # Different node — full reconnect
+                            await _kiwi_native.connect(host, port, float(freq), mode)
+                    except ValueError as exc:
+                        await websocket.send_json({"type": "ERROR", "message": f"SET_KIWI validation: {exc}"})
+                    except Exception as exc:
+                        await websocket.send_json({"type": "ERROR", "message": f"SET_KIWI failed: {exc}"})
 
             # ------------------------------------------------------------------
-            # Action: DISCONNECT_KIWI – stop the KiwiSDR pipeline
+            # Action: DISCONNECT_KIWI – stop the KiwiSDR connection
             # Payload: {"action": "DISCONNECT_KIWI"}
             # ------------------------------------------------------------------
             elif action == "DISCONNECT_KIWI":
-                # BUG-011: get_event_loop() deprecated → get_running_loop()
-                await asyncio.get_running_loop().run_in_executor(None, _stop_kiwi_pipeline)
+                if KIWI_USE_SUBPROCESS or not _HAS_NATIVE_KIWI:
+                    await asyncio.get_running_loop().run_in_executor(None, _stop_kiwi_pipeline)
+                else:
+                    if _kiwi_native:
+                        await _kiwi_native.disconnect()
                 _enqueue_from_thread({
                     "type": "KIWI.STATUS",
                     "connected": False,
-                    "host": "",
-                    "port": 0,
-                    "freq": 0,
-                    "mode": "",
+                    "host": "", "port": 0, "freq": 0, "mode": "",
                     "timestamp": time.strftime("%H:%M:%SZ", time.gmtime()),
                 })
 
@@ -771,20 +994,53 @@ async def get_kiwi() -> dict:
 
 
 # ===========================================================================
+# REST Endpoint  GET /api/kiwi/nodes  (Phase 1 — node discovery)
+# ===========================================================================
+
+@app.get("/api/kiwi/nodes", summary="List available KiwiSDR nodes sorted by proximity")
+async def get_kiwi_nodes(freq: float = None, limit: int = 10) -> list:
+    """
+    Returns nearby KiwiSDR nodes from the cached public directory, sorted by
+    Haversine distance from MY_GRID and filtered to nodes covering `freq` kHz.
+
+    Query params:
+      freq  — target frequency in kHz (default: KIWI_FREQ env var)
+      limit — max results to return (default: 10)
+    """
+    if _kiwi_directory is None:
+        return []
+    target_freq = float(freq) if freq is not None else float(KIWI_FREQ)
+    limit = max(1, min(limit, 50))
+    my_lat, my_lon = maidenhead_to_latlon(MY_GRID)
+    nodes = _kiwi_directory.get_nodes(target_freq, my_lat, my_lon, limit=limit)
+    return [n.to_dict() for n in nodes]
+
+
+# ===========================================================================
 # Health Check
 # ===========================================================================
 
 @app.get("/health")
 async def health() -> dict:
+    kiwi_cfg = (
+        _kiwi_native.config
+        if (not KIWI_USE_SUBPROCESS and _HAS_NATIVE_KIWI and _kiwi_native)
+        else _kiwi_config
+    )
     return {
         "status": "ok",
         "js8call_connected": js8_client_udp_transport is not None,
         "kiwi_connected": _kiwi_is_running(),
-        "kiwi_config": _kiwi_config,
+        "kiwi_config": kiwi_cfg,
+        "kiwi_mode": "native" if (not KIWI_USE_SUBPROCESS and _HAS_NATIVE_KIWI) else "subprocess",
         "active_ws_clients": len(_ws_clients),
         "heard_stations": len(_station_registry),
         "bridge_port": BRIDGE_PORT,
-        "js8call_address": f"{JS8CALL_HOST}:{JS8CALL_UDP_CLIENT_PORT}", # Updated to use UDP client port
+        "js8call_address": f"{JS8CALL_HOST}:{JS8CALL_UDP_CLIENT_PORT}",
+        # Phase 3 — failover stats
+        "failover_count": _failover_count,
+        "last_failover_at": _last_failover_at,
+        "candidate_nodes_available": _kiwi_directory.node_count if _kiwi_directory else 0,
     }
 
 

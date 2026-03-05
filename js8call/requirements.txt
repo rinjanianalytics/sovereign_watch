@@ -16,3 +16,6 @@ websockets>=12.0
 numpy>=1.24.0
 scipy>=1.11.0
 ws4py>=0.5.1
+
+# Phase 1: KiwiSDR node directory fetch (async HTTP)
+aiohttp>=3.9.0
