@@ -169,6 +169,7 @@ async def replay_tracks(start: str, end: str, limit: int = 1000):
         # BUG-006: A negative duration means dt_end < dt_start. Without this check
         # the value is always < MAX_HOURS so the window guard is silently bypassed.
         if dt_end <= dt_start:
+            logger.warning(f"Replay request rejected: end ({dt_end}) is not after start ({dt_start})")
             raise HTTPException(status_code=400, detail="end must be after start")
         if duration_hours > settings.TRACK_REPLAY_MAX_HOURS:
             raise HTTPException(

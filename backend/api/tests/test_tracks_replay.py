@@ -70,3 +70,33 @@ async def test_replay_valid_request():
         # But crucially, it is NOT 400.
         assert response.status_code == 503
         assert "Database not ready" in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_replay_negative_duration():
+    """
+    Test that requesting replay with end time before start time returns 400.
+    """
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # BUG-006: End time before start time
+        start = datetime.now(timezone.utc)
+        end = start - timedelta(hours=1)
+
+        params = {"start": start.isoformat(), "end": end.isoformat(), "limit": 100}
+        response = await client.get("/api/tracks/replay", params=params)
+        assert response.status_code == 400
+        assert "end must be after start" in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_replay_zero_duration():
+    """
+    Test that requesting replay with end time equal to start time returns 400.
+    """
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # BUG-006: End time equal to start time
+        now = datetime.now(timezone.utc).isoformat()
+        params = {"start": now, "end": now, "limit": 100}
+        response = await client.get("/api/tracks/replay", params=params)
+        assert response.status_code == 400
+        assert "end must be after start" in response.json()["detail"]
