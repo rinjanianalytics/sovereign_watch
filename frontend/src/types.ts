@@ -115,6 +115,18 @@ export interface JS8StatusLine {
   freq: string;
 }
 
+export interface KiwiNode {
+  host: string;
+  port: number;
+  lat: number;
+  lon: number;
+  freq_min_khz: number;
+  freq_max_khz: number;
+  users: number;
+  num_ch: number;
+  distance_km: number;
+}
+
 export interface RepeaterStation {
   callsign: string;
   lat: number;

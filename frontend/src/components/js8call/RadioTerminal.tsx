@@ -34,7 +34,10 @@ import {
   Clock,
   Activity,
   Server,
+  ChevronDown,
 } from 'lucide-react';
+import type { KiwiNode } from '../../types';
+import KiwiNodeBrowser from './KiwiNodeBrowser';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -243,14 +246,7 @@ export default function RadioTerminal() {
   const [kiwiConnected, setKiwiConnected] = useState(false);
   const [kiwiConnecting, setKiwiConnecting] = useState(false);
 
-  const configChanged = useMemo(() => {
-    if (!activeKiwiConfig) return false;
-    return (
-      kiwiConfig.host !== activeKiwiConfig.host ||
-      kiwiConfig.port !== activeKiwiConfig.port ||
-      kiwiConfig.freq !== activeKiwiConfig.freq
-    );
-  }, [kiwiConfig, activeKiwiConfig]);
+  const [kiwiPanelOpen, setKiwiPanelOpen] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const wsRef = useRef<WebSocket | null>(null);
@@ -258,6 +254,7 @@ export default function RadioTerminal() {
   const reconnectDelay = useRef(RECONNECT_BASE_MS);
   const logBottomRef = useRef<HTMLDivElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const sdrContainerRef = useRef<HTMLDivElement>(null);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -477,6 +474,20 @@ export default function RadioTerminal() {
     wsRef.current?.send(JSON.stringify({ action: 'DISCONNECT_KIWI' }));
   }, [connected]);
 
+  // Connect to a node picked from the browser — keeps current freq/mode
+  const handleNodeConnect = useCallback((node: KiwiNode) => {
+    if (!connected || kiwiConnecting) return;
+    setKiwiConnecting(true);
+    setKiwiConfig(prev => ({ ...prev, host: node.host, port: node.port }));
+    wsRef.current?.send(JSON.stringify({
+      action: 'SET_KIWI',
+      host: node.host,
+      port: node.port,
+      freq: kiwiConfig.freq,
+      mode: kiwiConfig.mode,
+    }));
+  }, [connected, kiwiConnecting, kiwiConfig.freq, kiwiConfig.mode]);
+
   // ── Sorted station array ───────────────────────────────────────────────────
 
   const sortedStations = useMemo(
@@ -504,73 +515,49 @@ export default function RadioTerminal() {
         {/* Center: KiwiSDR config widget + JS8Call station info */}
         <div className="flex items-center gap-3 text-xs">
 
-          {/* KiwiSDR inline config */}
-          <div className="flex items-center gap-1.5">
-            <Server className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                value={kiwiConfig.host}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, host: e.target.value }))}
-                placeholder="sdr.host.com"
-                disabled={!connected || kiwiConnecting}
-                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-36 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
-              />
-              <span className="text-slate-600">:</span>
-              <input
-                type="number"
-                value={kiwiConfig.port}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, port: Number(e.target.value) || 8073 }))}
-                placeholder="8073"
-                disabled={!connected || kiwiConnecting}
-                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-16 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
-              />
-              <span className="text-slate-600 px-0.5">@</span>
-              <input
-                type="number"
-                value={kiwiConfig.freq}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKiwiConfig((p: any) => ({ ...p, freq: Number(e.target.value) || 14074 }))}
-                placeholder="14074"
-                disabled={!connected || kiwiConnecting}
-                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-xs text-slate-300 w-20 focus:outline-none focus:border-indigo-500 disabled:opacity-40"
-              />
-              <span className="text-slate-600 text-[10px]">kHz</span>
-            </div>
-
+          {/* SDR node selector — opens the KiwiNodeBrowser floating panel */}
+          <div className="relative" ref={sdrContainerRef}>
             <button
-              onClick={() => {
-                if (kiwiConnected) {
-                  if (configChanged) {
-                    handleKiwiConnect();
-                  } else {
-                    handleKiwiDisconnect();
-                  }
-                } else {
-                  handleKiwiConnect();
-                }
-              }}
-              disabled={!connected || kiwiConnecting}
+              onClick={() => setKiwiPanelOpen(v => !v)}
+              disabled={!connected}
               className={`
-                px-3 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider
-                transition-colors duration-150 focus:outline-none
+                flex items-center gap-1.5 px-3 py-1.5 rounded border font-mono text-xs transition-colors duration-150
                 ${kiwiConnected
-                  ? configChanged
-                    ? 'bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40' // Update/Retune
-                    : 'bg-rose-600/20 border border-rose-500/30 text-rose-400 hover:bg-rose-600/40'   // Disconnect
-                  : kiwiConnecting
-                    ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-wait'
-                    : 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/40 disabled:opacity-40 disabled:cursor-not-allowed'}
+                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20'
+                  : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700 hover:text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed'}
               `}
             >
-              {kiwiConnected
-                ? configChanged
-                  ? 'Update SDR'
-                  : 'Disconnect'
-                : kiwiConnecting
-                  ? 'Connecting…'
-                  : 'Connect SDR'
-              }
+              <Server className="w-3.5 h-3.5 shrink-0" />
+              {kiwiConnecting ? (
+                <span className="text-slate-500">Connecting…</span>
+              ) : kiwiConnected && activeKiwiConfig ? (
+                <>
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="truncate max-w-[140px]">{activeKiwiConfig.host}</span>
+                  <span className="text-slate-600">@</span>
+                  <span className="text-emerald-400">{activeKiwiConfig.freq} kHz</span>
+                </>
+              ) : (
+                <span>Browse SDR Nodes</span>
+              )}
+              <ChevronDown className={`w-3 h-3 text-slate-600 ml-0.5 transition-transform duration-150 ${kiwiPanelOpen ? 'rotate-180' : ''}`} />
             </button>
+
+            <KiwiNodeBrowser
+              isOpen={kiwiPanelOpen}
+              onClose={() => setKiwiPanelOpen(false)}
+              containerRef={sdrContainerRef}
+              currentFreqKhz={kiwiConfig.freq}
+              activeConfig={activeKiwiConfig}
+              kiwiConnected={kiwiConnected}
+              kiwiConnecting={kiwiConnecting}
+              bridgeConnected={connected}
+              onConnect={handleNodeConnect}
+              onDisconnect={handleKiwiDisconnect}
+              manualConfig={kiwiConfig}
+              onManualConfigChange={(patch) => setKiwiConfig((p: any) => ({ ...p, ...patch }))}
+              onManualConnect={handleKiwiConnect}
+            />
           </div>
 
           {/* Divider */}
