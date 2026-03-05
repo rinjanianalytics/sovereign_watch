@@ -19,3 +19,8 @@
 **Vulnerability:** SQL Injection
 **Learning:** `backend/scripts/cleanup_timescale.py` used string interpolation (f-strings) to insert an environment variable (`RETENTION_HOURS`) directly into a SQL query. Even though the variable was previously cast to an integer, it is a critical security vulnerability to build SQL queries with string interpolation, as subsequent changes to the codebase might bypass the type coercion, exposing the application to injection attacks.
 **Prevention:** Never use string interpolation to construct SQL queries. Always use parameterized queries (e.g., passing variables as a tuple to `cursor.execute`) which delegates the safe escaping of variables to the database driver.
+
+## 2026-03-05 - Missing Input Length Constraints Leads to DoS
+**Vulnerability:** Denial of Service (DoS)
+**Learning:** `backend/api/routers/analysis.py` accepted extremely long `uid` path parameters without bound, and `lookback_hours` was unbounded. Unbounded user inputs can be abused to process huge payloads, consuming memory or overwhelming the database.
+**Prevention:** Always enforce strict length and bounds limits on user inputs using `fastapi.Path` and `pydantic.Field` constraints.
