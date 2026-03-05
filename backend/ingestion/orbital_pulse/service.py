@@ -90,6 +90,23 @@ class OrbitalPulseService:
             "planet":     "intel"
         }
 
+        # Map Celestrak group names → named constellation (None = no specific constellation)
+        self.GROUP_CONSTELLATION_MAP = {
+            "gps-ops":      "GPS",
+            "glonass-ops":  "GLONASS",
+            "galileo":      "Galileo",
+            "beidou":       "BeiDou",
+            "noaa":         "NOAA",
+            "goes":         "GOES",
+            "sarsat":       "SARSAT",
+            "starlink":     "Starlink",
+            "oneweb":       "OneWeb",
+            "iridium-NEXT": "Iridium",
+            "radarsat":     "RADARSAT",
+            "spire":        "Spire",
+            "planet":       "Planet",
+        }
+
     async def setup(self):
         # Configure AIOKafkaProducer with batching and lingering to significantly
         # lower CPU overhead from native python event loops pushing 14k messages.
@@ -111,7 +128,7 @@ class OrbitalPulseService:
         safe_endpoint = endpoint.replace("/", "_")
         return os.path.join(CACHE_DIR, f"{safe_endpoint}_{param_name}_{param_val}.txt")
 
-    def parse_tle_data(self, data_text, param_val, category_map):
+    def parse_tle_data(self, data_text, param_val, category_map, constellation_map):
         """Parse TLE data synchronously (CPU bound)."""
         parsed_sats = {}
         lines = [line.strip() for line in data_text.splitlines() if line.strip()]
@@ -130,6 +147,7 @@ class OrbitalPulseService:
 
                 # Use the clean category label, not the raw group name
                 category = category_map.get(param_val, param_val)
+                constellation = constellation_map.get(param_val)  # None if no named constellation
 
                 parsed_sats[norad_id] = {
                     "satrec": sat,
@@ -137,6 +155,7 @@ class OrbitalPulseService:
                         "name": name,
                         "norad_id": norad_id,
                         "category": category,
+                        "constellation": constellation,
                         "period_min": period_min,
                         "inclination_deg": inc_deg,
                         "eccentricity": sat.ecco,
@@ -200,7 +219,8 @@ class OrbitalPulseService:
                     self.parse_tle_data,
                     data_text,
                     param_val,
-                    self.GROUP_CATEGORY_MAP
+                    self.GROUP_CATEGORY_MAP,
+                    self.GROUP_CONSTELLATION_MAP
                 )
                 sat_dict.update(parsed_sats)
 
@@ -317,6 +337,7 @@ class OrbitalPulseService:
                     # Overwrite detail fields as requested:
                     tak_event["detail"]["norad_id"] = meta['norad_id']
                     tak_event["detail"]["category"] = meta['category']
+                    tak_event["detail"]["constellation"] = meta['constellation']
                     tak_event["detail"]["period_min"] = meta['period_min']
                     tak_event["detail"]["inclination_deg"] = meta['inclination_deg']
                     tak_event["detail"]["eccentricity"] = meta['eccentricity']

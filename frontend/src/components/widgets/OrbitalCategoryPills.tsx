@@ -19,13 +19,22 @@ interface OrbitalStats {
   gps: number; weather: number; comms: number; surveillance: number; other: number; total: number;
 }
 
+// constellation-stats response: { [category]: { [constellation]: count } }
+type ConstellationStats = Record<string, Record<string, number>>;
+
 export const OrbitalCategoryPills: React.FC<OrbitalCategoryPillsProps> = ({ filters, onFilterChange, trackCount }) => {
   const [stats, setStats] = useState<OrbitalStats | null>(null);
+  const [constellationStats, setConstellationStats] = useState<ConstellationStats>({});
 
   useEffect(() => {
     fetch('/api/orbital/stats')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setStats(data); })
+      .catch(() => { });
+
+    fetch('/api/orbital/constellation-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setConstellationStats(data); })
       .catch(() => { });
   }, []);
 
@@ -40,6 +49,7 @@ export const OrbitalCategoryPills: React.FC<OrbitalCategoryPillsProps> = ({ filt
           const Icon = cat.icon;
           const isActive = filters[cat.key] !== false;
           const count = stats ? stats[cat.statsKey] : null;
+          const constellations = constellationStats[cat.statsKey];
 
           let activeClasses = '';
           if (isActive) {
@@ -54,18 +64,29 @@ export const OrbitalCategoryPills: React.FC<OrbitalCategoryPillsProps> = ({ filt
           }
 
           return (
-            <button
-              key={cat.key}
-              onClick={() => onFilterChange(cat.key, !isActive)}
-              className={`flex flex-1 min-w-[30%] items-center justify-center gap-1.5 px-2 py-1.5 rounded transition-all duration-300 ${isActive ? activeClasses : 'text-white/30 hover:text-white/60 border border-white/5 bg-white/5'
-                }`}
-            >
-              <Icon size={10} strokeWidth={2.5} />
-              <span className="text-[9px] font-black tracking-widest">{cat.label}</span>
-              {count != null && (
-                <span className="text-[8px] opacity-60 tabular-nums">({count.toLocaleString()})</span>
+            <div key={cat.key} className="flex flex-col flex-1 min-w-[30%] gap-0.5">
+              <button
+                onClick={() => onFilterChange(cat.key, !isActive)}
+                className={`flex w-full items-center justify-center gap-1.5 px-2 py-1.5 rounded transition-all duration-300 ${isActive ? activeClasses : 'text-white/30 hover:text-white/60 border border-white/5 bg-white/5'
+                  }`}
+              >
+                <Icon size={10} strokeWidth={2.5} />
+                <span className="text-[9px] font-black tracking-widest">{cat.label}</span>
+                {count != null && (
+                  <span className="text-[8px] opacity-60 tabular-nums">({count.toLocaleString()})</span>
+                )}
+              </button>
+              {isActive && constellations && Object.keys(constellations).length > 0 && (
+                <div className="flex flex-col gap-px px-1">
+                  {Object.entries(constellations).map(([name, n]) => (
+                    <div key={name} className="flex items-center justify-between px-1.5">
+                      <span className="text-[7px] text-white/40 tracking-wider truncate">{name}</span>
+                      <span className="text-[7px] text-white/30 tabular-nums">{n.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

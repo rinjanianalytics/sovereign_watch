@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS satellites (
     norad_id        TEXT PRIMARY KEY,
     name            TEXT,
     category        TEXT,
+    constellation   TEXT,
     tle_line1       TEXT NOT NULL,
     tle_line2       TEXT NOT NULL,
     period_min      FLOAT,
@@ -61,6 +62,8 @@ CREATE TABLE IF NOT EXISTS satellites (
     eccentricity    FLOAT,
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS ix_satellites_constellation ON satellites (constellation);
 
 -- TABLE: intel_reports (Semantic Data)
 CREATE TABLE IF NOT EXISTS intel_reports (

@@ -39,24 +39,35 @@ def _jday_from_datetime(dt: datetime):
     return jday(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second + dt.microsecond / 1e6)
 
 
-async def _load_satellites(pool, norad_ids: Optional[list[str]], category: Optional[str] = None) -> list[dict]:
+async def _load_satellites(
+    pool,
+    norad_ids: Optional[list[str]],
+    category: Optional[str] = None,
+    constellation: Optional[str] = None,
+) -> list[dict]:
     """Fetch TLE rows from the satellites table."""
     async with pool.acquire() as conn:
         if norad_ids:
             rows = await conn.fetch(
-                "SELECT norad_id, name, category, tle_line1, tle_line2 "
+                "SELECT norad_id, name, category, constellation, tle_line1, tle_line2 "
                 "FROM satellites WHERE norad_id = ANY($1::text[])",
                 norad_ids,
             )
+        elif constellation:
+            rows = await conn.fetch(
+                "SELECT norad_id, name, category, constellation, tle_line1, tle_line2 "
+                "FROM satellites WHERE LOWER(constellation) = LOWER($1)",
+                constellation,
+            )
         elif category:
             rows = await conn.fetch(
-                "SELECT norad_id, name, category, tle_line1, tle_line2 "
+                "SELECT norad_id, name, category, constellation, tle_line1, tle_line2 "
                 "FROM satellites WHERE LOWER(category) = LOWER($1)",
                 category,
             )
         else:
             rows = await conn.fetch(
-                "SELECT norad_id, name, category, tle_line1, tle_line2 FROM satellites"
+                "SELECT norad_id, name, category, constellation, tle_line1, tle_line2 FROM satellites"
             )
     return [dict(r) for r in rows]
 
@@ -72,7 +83,8 @@ async def get_passes(
     hours: int = Query(6, ge=1, le=48, description="Prediction window in hours"),
     min_elevation: float = Query(10.0, ge=0.0, le=90.0, description="Minimum AOS elevation (degrees)"),
     norad_ids: Optional[str] = Query(None, description="Comma-separated NORAD IDs to filter"),
-    category: Optional[str] = Query(None, description="Satellite category to filter (e.g. gps, weather, surveillance)"),
+    category: Optional[str] = Query(None, description="Satellite category to filter (e.g. gps, weather, comms, intel)"),
+    constellation: Optional[str] = Query(None, description="Constellation to filter (e.g. Starlink, OneWeb, Iridium)"),
     limit: Optional[int] = Query(None, ge=1, le=500, description="Max passes to return (sorted by AOS)"),
 ):
     """
@@ -106,20 +118,20 @@ async def get_passes(
     # SGP4 passes for that many sats in one request will saturate the server and
     # OOM the process.  Category-level queries are allowed for smaller populations
     # (gps, weather, intel) but we hard-reject comms unless a specific NORAD ID
-    # list is also supplied.
+    # list or constellation is also supplied.
     PASS_HEAVY_CATEGORIES = {"comms"}
-    if category and category.lower() in PASS_HEAVY_CATEGORIES and not norad_ids:
+    if category and category.lower() in PASS_HEAVY_CATEGORIES and not norad_ids and not constellation:
         raise HTTPException(
             status_code=400,
             detail=(
                 f"Pass prediction for category '{category}' is not supported without "
-                "specifying individual norad_ids. The comms constellation is too large "
-                "for a full category scan. Select a specific satellite instead."
+                "specifying individual norad_ids or a constellation (e.g. constellation=Starlink). "
+                "The comms category is too large for a full scan."
             ),
         )
 
     norad_filter = [n.strip() for n in norad_ids.split(",")] if norad_ids else None
-    satellites = await _load_satellites(pool, norad_filter, category)
+    satellites = await _load_satellites(pool, norad_filter, category, constellation)
 
     if not satellites:
         return []
@@ -276,6 +288,36 @@ async def get_stats():
         "other":  counts.get("other", 0),
         "total":  total,
     }
+
+
+@router.get("/constellation-stats")
+async def get_constellation_stats():
+    """
+    Return satellite counts grouped by constellation.
+    Used by the OrbitalCategoryPills widget to show per-constellation breakdowns
+    within each category (e.g. Starlink / OneWeb / Iridium within COMMS).
+    """
+    pool = db.pool
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT LOWER(category) AS category, constellation, COUNT(*) AS cnt "
+            "FROM satellites "
+            "WHERE constellation IS NOT NULL "
+            "GROUP BY LOWER(category), constellation "
+            "ORDER BY LOWER(category), cnt DESC"
+        )
+
+    result: dict[str, dict[str, int]] = {}
+    for row in rows:
+        cat = row["category"] or "other"
+        cst = row["constellation"]
+        n = int(row["cnt"])
+        result.setdefault(cat, {})[cst] = n
+
+    return result
 
 
 @router.get("/groundtrack/{norad_id}")

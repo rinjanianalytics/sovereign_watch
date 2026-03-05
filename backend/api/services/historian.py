@@ -37,14 +37,15 @@ async def historian_task():
         """
 
         satellite_upsert_sql = """
-            INSERT INTO satellites (norad_id, name, category, tle_line1, tle_line2,
+            INSERT INTO satellites (norad_id, name, category, constellation, tle_line1, tle_line2,
                                     period_min, inclination_deg, eccentricity, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
             ON CONFLICT (norad_id) DO UPDATE SET
                 tle_line1       = EXCLUDED.tle_line1,
                 tle_line2       = EXCLUDED.tle_line2,
                 name            = EXCLUDED.name,
                 category        = EXCLUDED.category,
+                constellation   = EXCLUDED.constellation,
                 period_min      = EXCLUDED.period_min,
                 inclination_deg = EXCLUDED.inclination_deg,
                 eccentricity    = EXCLUDED.eccentricity,
@@ -102,6 +103,7 @@ async def historian_task():
                     norad_id = classification.get("norad_id") or uid
                     sat_name = classification.get("name") or callsign
                     category = classification.get("category")
+                    constellation = classification.get("constellation")
                     period_min = classification.get("period_min")
                     inclination_deg = classification.get("inclination_deg")
                     eccentricity = classification.get("eccentricity")
@@ -110,7 +112,7 @@ async def historian_task():
                             async with db.pool.acquire() as conn:
                                 await conn.execute(
                                     satellite_upsert_sql,
-                                    str(norad_id), sat_name, category,
+                                    str(norad_id), sat_name, category, constellation,
                                     tle_line1, tle_line2,
                                     float(period_min) if period_min is not None else None,
                                     float(inclination_deg) if inclination_deg is not None else None,
