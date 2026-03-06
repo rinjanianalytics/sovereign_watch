@@ -148,14 +148,22 @@ Sovereign Watch uses a **multi-source round-robin poller** with automatic failov
 
 TLE data is fetched from Celestrak and propagated locally via SGP4. Updated every 6 hours.
 
-| Group       | URL                                                                            | Category  |
-| :---------- | :----------------------------------------------------------------------------- | :-------- |
-| GPS Ops     | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops)     | `gps`     |
-| GLONASS Ops | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=glonass-ops) | `gps`     |
-| Galileo     | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo)     | `gps`     |
-| BeiDou      | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou)      | `gps`     |
-| Weather     | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=weather)     | `weather` |
-| NOAA        | [celestrak.org](https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa)        | `weather` |
+| Group / Constellation  | URL (`celestrak.org/NORAD/elements/...`)                     | Category      |
+| :--------------------- | :----------------------------------------------------------- | :------------ |
+| **GNSS / Navigation**  | `gp.php?GROUP=gps-ops`, `glonass-ops`, `galileo`, `beidou`   | `gps`         |
+| **Weather / Earth**    | `gp.php?GROUP=weather`, `noaa`, `goes`, `resource`           | `weather`     |
+| **Communications**     | `gp.php?GROUP=starlink`, `oneweb`, `iridium-NEXT`, `amateur` | `comms`       |
+| **Intelligence / ISR** | `gp.php?GROUP=military`, `radarsat`, `spire`, `planet`       | `intel`       |
+| **LEO / Other**        | `gp.php?GROUP=stations`, `visual`, `cubesat`, `sarsat`       | `leo` / `sar` |
+
+### 📻 HF Radio (KiwiSDR)
+
+Sovereign Watch uses the public KiwiSDR directory to find optimal listening nodes based on geographic proximity to the active mission area.
+
+| Feed                 | URL                                                                              | Notes                            |
+| :------------------- | :------------------------------------------------------------------------------- | :------------------------------- |
+| **rx.linkfanel.net** | [rx.linkfanel.net/kiwisdr_com.js](http://rx.linkfanel.net/kiwisdr_com.js)        | Primary public directory mirror. |
+| **Skywave Linux**    | [rx.skywavelinux.com/kiwisdr_com.js](https://rx.skywavelinux.com/kiwisdr_com.js) | Fallback directory mirror.       |
 
 ### 📻 RF Infrastructure (Repeaters)
 
