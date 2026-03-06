@@ -1,6 +1,6 @@
 import json
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
 from sse_starlette.sse import EventSourceResponse
 from litellm import acompletion
 from models.schemas import AnalyzeRequest
@@ -11,7 +11,10 @@ router = APIRouter()
 logger = logging.getLogger("SovereignWatch.Analysis")
 
 @router.post("/api/analyze/{uid}")
-async def analyze_track(uid: str, req: AnalyzeRequest):
+async def analyze_track(
+    req: AnalyzeRequest,
+    uid: str = Path(..., max_length=100, description="Unique identifier for the track entity")
+):
     """
     Fusion Analysis Endpoint:
     1. Fetch Track History (Hard Data)
