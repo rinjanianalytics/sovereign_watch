@@ -1,20 +1,31 @@
-# Sovereign Watch v0.18.1: Distributed Multi-INT Fusion Center
-
 <div align="center">
-  <img src="assets/images/logo.png" alt="Sovereign Watch Logo" width="200"/>
+  <img src="assets/images/logo.png" alt="Sovereign Watch Logo" width="260"/>
+  
+  # Sovereign Watch
+  ### Distributed Multi-INT Fusion Center
+  
+  <p align="center">
+    <a href="https://github.com/d3mocide/Sovereign_Watch/releases"><img src="https://img.shields.io/github/v/release/d3mocide/Sovereign_Watch?color=10B981&label=Release&style=for-the-badge" alt="Release"></a>
+    <img src="https://img.shields.io/badge/Status-Phase%202%20(Active)-F97316?style=for-the-badge" alt="Status">
+    <a href="https://github.com/d3mocide/Sovereign_Watch/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPLv3-06B6D4?style=for-the-badge" alt="License"></a>
+    <img src="https://img.shields.io/badge/Docker-Ready-2563EB?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+  </p>
+
+  <p align="center">
+    <em>A self-hosted, edge-to-cloud intelligence platform for high-velocity telemetry (ADS-B, AIS, Orbital) and OSINT fusion.</em><br/>
+    <em>It enforces data sovereignty by running entirely on local hardware, utilizing a "Pulse" architecture and "Tiered AI" cognition.</em>
+  </p>
 </div>
 
-> **Operational Status**: Phase 2 (Tactical Intelligence & Tracking) - _Active Development_
-
-Sovereign Watch is a self-hosted, distributed intelligence fusion platform designed to ingest, normalize, and analyze high-velocity telemetry (ADS-B, AIS, Orbital) and high-variety intelligence (SIGINT, OSINT). It enforces data sovereignty by running entirely on local hardware (Edge to Cloud), utilizing a "Pulse" architecture for data collection and a "Tiered AI" strategy for cognition.
-
 ---
+
+## 🌍 System Overview
 
 ### Tactical Map View
 
 ![Sovereign Watch - Tactical Map](assets/images/SovereignWatch.png)
 
-### Orbital Map View
+### Orbital Tracking
 
 ![Sovereign Watch - Orbital Map](assets/images/SovereignWatch-2.png)
 
@@ -54,20 +65,20 @@ Sovereign Watch is a self-hosted, distributed intelligence fusion platform desig
 
 ## ⚠️ Disclaimer & Liability
 
-### 📡 Source Data and Open Intelligence
+> [!IMPORTANT]
+> **Source Data and Open Intelligence**
+> Sovereign Watch ingests telemetry and intelligence from public, open-source networks (e.g., ADS-B, AIS, public API feeds). The positional data, classifications, and intelligence displayed within this platform are strictly derivative of these unencrypted, publicly broadcasted signals.
 
-Sovereign Watch ingests telemetry and intelligence from public, open-source networks (e.g., ADS-B, AIS, public API feeds). The positional data, classifications, and intelligence displayed within this platform are strictly derivative of these unencrypted, publicly broadcasted signals.
-
-### 🛡️ Limited Liability
-
-**All data is provided "AS IS" without any warranty of accuracy, reliability, or completeness.**
-The developers and maintainers of Sovereign Watch assume **no responsibility or liability** for:
-
-- The accuracy of real-time or historical tracking information.
-- Decisions or actions taken based on the intelligence presented by this software.
-- Disruptions to the third-party networks providing the upstream data.
-
-Sovereign Watch is designed purely for research, educational, and hobbyist data fusion purposes.
+> [!WARNING]
+> **Limited Liability**  
+> **All data is provided "AS IS" without any warranty of accuracy, reliability, or completeness.**  
+> The developers and maintainers of Sovereign Watch assume **no responsibility or liability** for:
+>
+> - The accuracy of real-time or historical tracking information.
+> - Decisions or actions taken based on the intelligence presented by this software.
+> - Disruptions to the third-party networks providing the upstream data.
+>
+> Sovereign Watch is designed purely for research, educational, and hobbyist data fusion purposes.
 
 ---
 
@@ -210,14 +221,16 @@ The Tactical Map uses dynamic "thermal" gradients to visualize critical metadata
 
 ## 🔍 Core Capabilities
 
-- **Deep Vessel Classification**: Real-time parsing of Maritime ShipStaticData to classify tankers, cargo, military, SAR, and passenger vessels with absolute precision.
-- **Orbital Pulse Tracking**: End-to-end satellite tracking using Celestrak TLE ingestion and live SGP4 propagation. Features smooth 60fps Projective Velocity Blending (PVB) and Gap Bridge trails to dynamically visualize LEO/MEO/GEO assets in real-time.
-- **Undersea Infrastructure Awareness**: Global visualization of the submarine cable network and strategic landing stations. Provides real-time access to cable ownership, length, and operational status, integrated directly into the tactical map for multi-INT fusion.
-- **RF Infrastructure Awareness**: Comprehensive mapping of amateur radio repeater networks across the theater, providing operators with immediate access to vital communication relays, operational frequencies, and signal coverage radii.
-- **JS8Call Signal Intelligence**: Integrated HF digital mode (JS8) radio bridge and interactive HUD terminal for real-time tactical communications and station tracking.
-- **Projective Velocity Blending (PVB)**: Physics-based kinematic rendering ensures fast-moving aircraft coast smoothly between delayed transponder pings, with zero "rubber-banding."
-- **Granular Filtering Matrix**: Advanced HUD tools to strip away visual noise. Filter the theater by specific sub-classes (e.g., hiding generic cargo and passenger jets, while highlighting Drones, Helicopters, and Military fast-movers).
-- **Time-Travel (Historian Service)**: All positional data is written to a TimescaleDB instance. Operators can search for past targets and "replay" tactical situations from hours or days ago directly within the WebGL interface.
+| Capability                       | Tactical Description                                                                                                                     |
+| :------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deep Vessel Classification**   | Real-time parsing of Maritime `ShipStaticData` to classify tankers, cargo, military, SAR, and passenger vessels with absolute precision. |
+| **Orbital Pulse Tracking**       | End-to-end satellite tracking using Celestrak TLE ingestion and live SGP4 propagation (60fps PVB motion & Ground tracks).                |
+| **Undersea Infrastructure**      | Global visualization of the submarine cable network and strategic landing stations with access to operational status.                    |
+| **RF Infrastructure Awareness**  | Comprehensive mapping of amateur radio repeater networks across the theater for immediate access to communication relays.                |
+| **JS8Call Signal Intelligence**  | Integrated HF digital mode (JS8) radio bridge and interactive HUD terminal for real-time tactical communications.                        |
+| **Projective Velocity Blending** | Physics-based kinematic rendering ensures fast-moving aircraft coast smoothly between delayed transponder pings.                         |
+| **Granular Filtering Matrix**    | Advanced HUD tools to strip away visual noise. Filter the theater by specific sub-classes (e.g., Drones or Military).                    |
+| **Time-Travel (Historian)**      | All positional data is written to TimescaleDB. Operators can replay tactical situations from hours or days ago locally.                  |
 
 ## 📂 Directory Structure
 
@@ -263,4 +276,33 @@ Both Frontend and Backend services are configured for **Hot Module Replacement**
 
 ---
 
-_Maintained by d3FRAG Networks & The Antigravity Agent Team._
+## 🤝 Contributing
+
+We welcome contributions to Sovereign Watch! Phase 2 is currently focused on Tactical Intelligence & Tracking.
+
+- **Pull Requests**: Please ensure your PR includes a clear description of the feature or bug fix.
+- **Issue Tracker**: Use the GitHub issue tracker for feature requests, bug reports, and to ask questions.
+- **AI Agent Contributions**: Please review `AGENTS.md` to ensure modifications align with system architecture and "Sovereign Glass" design principles.
+
+---
+
+## 🏆 Acknowledgements & Tech Stack
+
+Sovereign Watch is built on the shoulders of giants. We extend our deep gratitude to the maintainers of these core technologies:
+
+- **[Deck.gl](https://deck.gl/)**: High-performance WebGL2 spatial rendering.
+- **[MapLibre GL JS](https://maplibre.org/) / [Mapbox GL JS](https://www.mapbox.com/)**: Core mapping engines and spherical globe projections.
+- **[TimescaleDB](https://www.timescale.com/)**: Heavy-duty time-series telemetry persistence.
+- **[Redpanda](https://redpanda.com/)**: High-throughput Kafka-compatible streaming bus.
+- **[Celestrak](https://celestrak.org/)**: Vital orbital data propagation and TLE distribution.
+- **[FastAPI](https://fastapi.tiangolo.com/) & [React](https://react.dev/)**: The core architecture powering the fusion center.
+
+---
+
+<div align="center">
+  <p>
+    <b>Sovereign Watch</b> &copy; 2026<br/>
+    <i>Maintained by d3FRAG Networks & The Antigravity Agent Team.</i><br/><br/>
+    <a href="#sovereign-watch">🔼 Back to Top</a>
+  </p>
+</div>
