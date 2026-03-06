@@ -179,21 +179,25 @@ Sovereign Watch uses the public KiwiSDR directory to find optimal listening node
 
 ## 🛡️ Tactical Design ("Sovereign Glass")
 
-- **Dual Operating Modes**: Instantly pivot between the **Tactical Map** (Aviation, Maritime, Infrastructure) and the **Orbital Map** (Satellites) to maintain focus on the relevant domain.
-- **Chevron-First Architecture**: Unified directional trackers for all assets; no legacy dot markers.
-- **Hybrid 3D Engine**: Seamlessly switches between **Mapbox 3D** (Terrain/Satellite) and **CARTO Dark Matter** (Vector/Local) based on configuration.
-- **High-Fidelity HUD**: Integrated global TopBar with synchronized temporal references (UTC), real-time entity tracking sidebars, and active intelligence feeds.
-- **Immersion Layers**: Micro-noise texture and tactical grid overlays for a professional surveillance aesthetic.
-- **Interactive Vectors**: Pickable chevrons for target locking, historic trail inspection, entity telemtry drill-down, and tactical time travel (replay).
+| Design Principle               | Implementation                                                                                                                                                   |
+| :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dual Operating Modes**       | Instantly pivot between the **Tactical Map** (Aviation, Maritime, Infrastructure) and the **Orbital Map** (Satellites) to maintain focus on the relevant domain. |
+| **Chevron-First Architecture** | Unified directional trackers for all assets; no legacy dot markers.                                                                                              |
+| **Hybrid 3D Engine**           | Seamlessly switches between **Mapbox 3D** (Terrain/Satellite) and **CARTO Dark Matter** (Vector/Local) based on configuration.                                   |
+| **High-Fidelity HUD**          | Integrated global TopBar with synchronized temporal references (UTC), real-time entity tracking sidebars, and active intelligence feeds.                         |
+| **Immersion Layers**           | Micro-noise texture and tactical grid overlays for a professional surveillance aesthetic.                                                                        |
+| **Interactive Vectors**        | Pickable chevrons for target locking, historic trail inspection, entity telemetry drill-down, and tactical time travel (replay).                                 |
 
 ## 🗼 Tactical Indicators
 
 ### Asset Symbology
 
-- **Chevrons**: Indicate directional heading and asset type (Aviation/Maritime). Hovering/Clicking reveals the target's specific classification.
-- **Star**: Orbital assets (Satellites). Rendered at ground-track position with predicted orbital paths.
-- **Pulsating Rings**: Active telemetry updates. Intensity increases when an asset is selected.
-- **Tactical Outline**: High-value/special assets (SAR, Military, Law Enforcement vessels, Drones, Helicopters) emit a glowing **Tactical Orange** signature aura for instantaneous operator recognition.
+| Symbol / Indicator   | Tactical Meaning                                                                                                                                                                  |
+| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chevrons**         | Indicate directional heading and asset type (Aviation/Maritime). Hovering/Clicking reveals the target's specific classification.                                                  |
+| **Star**             | Orbital assets (Satellites). Rendered at ground-track position with predicted orbital paths.                                                                                      |
+| **Pulsating Rings**  | Active telemetry updates. Intensity increases when an asset is selected.                                                                                                          |
+| **Tactical Outline** | High-value/special assets (SAR, Military, Law Enforcement vessels, Drones, Helicopters) emit a glowing **Tactical Orange** signature aura for instantaneous operator recognition. |
 
 ### Intelligent Color Coding
 
