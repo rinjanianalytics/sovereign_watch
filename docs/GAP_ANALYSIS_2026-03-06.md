@@ -38,21 +38,13 @@ The following features were implemented after the last roadmap update and are mi
 
 ## 2. Partially Implemented Features
 
-> **Correction note:** An earlier draft of this document incorrectly flagged Orbital Pass Prediction (GAP-01) as a critical gap. Post-review verification confirms all components are fully implemented and operational — `satellites` table, Historian TLE upsert, `routers/orbital.py`, `sgp4_utils.py`, and `usePassPredictions.ts` all exist, and the feature is confirmed working in production (upcoming passes, Doppler shift, and polar plot all load). The `docs/tasks/2026-03-04-orbital-pass-prediction-overhaul.md` file is a planning artifact for work that has since been completed.
+> **Correction note:** Two items were incorrectly flagged as gaps based on stale planning docs in `docs/tasks/` and `docs/done/` that predate v0.18.x. Code verification and user confirmation show both are fully operational: (1) Orbital Pass Prediction — all backend and frontend components exist and render live data; (2) CoT Event Tracking (Fix-01) — events render on the tactical map and appear in IntelFeed. The planning task files are historical artifacts, not indicators of missing implementation.
 
 ### GAP-01 (Renumbered): Repeater Sub-Filter UI (FE-27)
 
 **Symptoms:** `LayerFilters.tsx` has a REPEATERS toggle but **no mode sub-filters** (FM / P25 / DMR / D-Star / Fusion / Open).
 
 **Status:** Data already present in RepeaterBook API response (`mode` field), backend proxy at `/api/repeaters/` fully operational. This is a pure frontend addition.
-
----
-
-### GAP-02: CoT Tracking Restoration (Fix-01)
-
-**Symptoms:** Cursor-on-Target protocol event tracking has not been verified after the v0.13.0 code audit refactors.
-
-**Impact:** If CoT event flow is broken, any ATAK/WinTAK client integrations would silently fail. Needs end-to-end validation.
 
 ---
 
@@ -128,10 +120,7 @@ Full RF infrastructure expansion and UX features. None of these have any code:
 
 ### Near-Term (Sprint 2)
 
-3. **Fix-01 — CoT Tracking Validation**
-   - Run end-to-end validation with a CoT client to confirm event tracking still works after v0.13.0 refactors.
-
-5. **FE-25a — NOAA Weather Radio Layer**
+3. **FE-25a — NOAA Weather Radio Layer**
    - Static data source, minimal backend work.
 
 6. **FE-25c — PSAP / 911 Centers Layer**

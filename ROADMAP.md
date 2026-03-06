@@ -147,12 +147,12 @@ The frontend is the "Single Pane of Glass" for the analyst.
 | **Infra-03**   | KiwiSDR Radio Integration | Frontend/Backend | **DONE** (v0.18.0, PR #74). `JS8Widget.tsx`, KiwiSDR TCP bridge, bearing layer visualization. |
 | **Security-01** | DoS Prevention        | Backend  | **DONE** (v0.17.x, PR #73). Input length limits, rate limiting hardening. |
 | **Backend-06** | Orbital Pass Prediction API | Backend + Frontend | **DONE** (v0.18.x). `satellites` table, Historian TLE upsert, `routers/orbital.py` (`/api/orbital/passes`, `/api/orbital/groundtrack`), `sgp4_utils.py`, `usePassPredictions` hook, fully wired to `PassPredictorWidget`/`DopplerWidget`/`PolarPlotWidget`. |
+| **Fix-01**     | CoT Event Tracking      | Frontend  | **DONE**. Cursor-on-Target events render on map and appear in IntelFeed. Confirmed operational. |
 
 ### Next Priority (P0–P1)
 
 | ID             | Task Name               | Component | Description                                                                                                                                                             |
 | :------------- | :---------------------- | :-------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Fix-01**     | **CoT Tracking**        | Frontend  | **(P1)**. Validate Cursor-on-Target event tracking end-to-end after v0.13.0 refactors. |
 | **FE-22**      | Drone Tactical Layer    | Frontend  | **(P1)**. `DroneLayer.tsx` with rotor icon, drone_class color coding, military/commercial/civil sub-filters. Classifier already complete (Ingest-07a). Pure frontend gap. |
 | **FE-27**      | Repeater Mode Sub-Filters | Frontend | **(P1)**. Expandable REPEATERS section with FM/P25/DMR/D-Star/Fusion/Open sub-toggles. Data already in RepeaterBook API — frontend-only change to `LayerFilters.tsx`. |
 | **FE-25a**     | NOAA Weather Radio Layer | Frontend  | **(P1)**. Static NOAA transmitter data, amber coverage circles, `useNoaaRadio` hook, INFRA toggle. |
