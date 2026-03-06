@@ -139,14 +139,22 @@ The frontend is the "Single Pane of Glass" for the analyst.
 | **FE-21**      | Undersea Cable Layer    | Frontend  | **DONE** (v0.12.0). `CableLayer.tsx`: animated cable routes, landing stations, INFRA toggle.  |
 | **Ingest-07a** | ADS-B Drone Enhancement | Data Eng  | **DONE** (v0.12.1). Drone ICAO type-code expansion, squawk 7400, drone_class sub-type.        |
 | **Audit-01**   | Code Review             | Security  | **DONE** (v0.13.0). 20 bugs resolved across frontend and backend.                             |
+| **FE-28**      | Satellite Dashboard Shell | Frontend | **DONE** (v0.18.0). `OrbitalDashboard` view mode, `OrbitalSidebarLeft`, ORBITAL pill in TopBar. |
+| **FE-29**      | Terminator Layer (Day/Night) | Frontend | **DONE** (v0.18.0). `TerminatorLayer.tsx` renders solar terminator using `suncalc`. |
+| **FE-30**      | Satellite Telemetry Widgets | Frontend | **DONE** (v0.18.0). `DopplerWidget.tsx`, `PolarPlotWidget.tsx`, `PassPredictorWidget.tsx` — fully wired to live pass prediction API. |
+| **FE-31**      | Orbital Category Pills | Frontend | **DONE** (v0.18.0). `OrbitalCategoryPills.tsx`: GPS/COMMS/WEATHER/ISR/LEO/SAR filter pills. |
+| **Ingest-03a** | Celestrak Expanded Groups | Data Eng | **DONE** (v0.18.0). 20 ingestion categories, `tle_line1`/`tle_line2`/`eccentricity` in payload. |
+| **Infra-03**   | KiwiSDR Radio Integration | Frontend/Backend | **DONE** (v0.18.0, PR #74). `JS8Widget.tsx`, KiwiSDR TCP bridge, bearing layer visualization. |
+| **Security-01** | DoS Prevention        | Backend  | **DONE** (v0.17.x, PR #73). Input length limits, rate limiting hardening. |
+| **Backend-06** | Orbital Pass Prediction API | Backend + Frontend | **DONE** (v0.18.x). `satellites` table, Historian TLE upsert, `routers/orbital.py` (`/api/orbital/passes`, `/api/orbital/groundtrack`), `sgp4_utils.py`, `usePassPredictions` hook, fully wired to `PassPredictorWidget`/`DopplerWidget`/`PolarPlotWidget`. |
+| **Fix-01**     | CoT Event Tracking      | Frontend  | **DONE**. Cursor-on-Target events render on map and appear in IntelFeed. Confirmed operational. |
 
 ### Next Priority (P0–P1)
 
 | ID             | Task Name               | Component | Description                                                                                                                                                             |
 | :------------- | :---------------------- | :-------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Fix-01**     | **CoT Tracking**        | Frontend  | **(P1)**. Restore functional Cursor-on-Target event tracking.                                                                                                           |
-| **FE-22**      | Drone Tactical Layer    | Frontend  | **(P1)**. `DroneLayer.tsx` with rotor icon, drone_class color coding, military/commercial/civil sub-filters. |
-| **FE-27**      | Repeater Mode Sub-Filters | Frontend | **(P1)**. Expandable REPEATERS section with FM/P25/DMR/D-Star/Fusion/Open sub-toggles. Data already in RepeaterBook API. |
+| **FE-22**      | Drone Tactical Layer    | Frontend  | **(P1)**. `DroneLayer.tsx` with rotor icon, drone_class color coding, military/commercial/civil sub-filters. Classifier already complete (Ingest-07a). Pure frontend gap. |
+| **FE-27**      | Repeater Mode Sub-Filters | Frontend | **(P1)**. Expandable REPEATERS section with FM/P25/DMR/D-Star/Fusion/Open sub-toggles. Data already in RepeaterBook API — frontend-only change to `LayerFilters.tsx`. |
 | **FE-25a**     | NOAA Weather Radio Layer | Frontend  | **(P1)**. Static NOAA transmitter data, amber coverage circles, `useNoaaRadio` hook, INFRA toggle. |
 | **FE-25c**     | PSAP / 911 Centers Layer | Frontend  | **(P1)**. Bundled static GeoJSON of dispatch centers, red/amber markers by PSAP type. |
 
@@ -186,4 +194,15 @@ The frontend is the "Single Pane of Glass" for the analyst.
 
 ---
 
-_Updated 2026-03-02. Phase 9 feature plan added (RF Infrastructure: P25, APRS, DMR, NOAA WX, PSAP). See `docs/FEATURE-ROADMAP-PHASE-9.md` for full architecture and agent prompts._
+---
+
+## Gap Analysis Reference
+
+See `docs/GAP_ANALYSIS_2026-03-06.md` for a full automated code review against this roadmap, including:
+- Completed features not previously tracked (FE-28 through Infra-03a)
+- Confirmed completed features that planning docs described as pending (orbital pass prediction fully shipped)
+- Prioritized next steps and health assessment by domain
+
+---
+
+_Updated 2026-03-06. Added FE-28–FE-31, Ingest-03a, Infra-03, Security-01 to Completed. Added GAP-01 (Orbital Pass Prediction) as P0 to Next Priority. See `docs/FEATURE-ROADMAP-PHASE-9.md` for Phase 9 RF Infrastructure specs. See `docs/GAP_ANALYSIS_2026-03-06.md` for full gap report._
