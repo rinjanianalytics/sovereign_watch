@@ -1,3 +1,13 @@
+## [0.18.2] - 2026-03-06
+
+### Fixed
+
+- **Globe Mode Rendering (Tactical & Orbital Map):**
+  - Resolved a platform-level incompatibility that caused Deck.gl layers to go blank when enabling Globe mode with a Mapbox token. Mapbox Globe explicitly blocks `CustomLayerInterface`, which `MapboxOverlay` requires. Both `TacticalMap` and `OrbitalMap` now dynamically switch to the **MapLibre adapter** in Globe mode, falling back to the Mapbox adapter for 2D/3D Mercator views where Mapbox Standard remains available.
+  - Fixed an incorrect `map.setProjection()` call in `useMapCamera` that passed the Mapbox-only bare string form (`"globe"`) to a MapLibre instance. The hook now correctly detects the active adapter and passes the MapLibre object form `{ type: "globe" }` when in Globe mode.
+  - Fixed a race-condition crash (`Cannot read properties of undefined (reading 'destroy')`) triggered when toggling Globe off. A manual `map.remove()` call was racing with `react-map-gl`'s own internal cleanup — removed the redundant call since the GL context lifecycle is fully managed by `react-map-gl` on unmount.
+  - `mapStyle` now correctly switches to the CartoDB Dark Matter style in Globe mode, matching the MapLibre adapter requirement.
+
 ## [0.18.1] - 2026-03-06
 
 ### Added

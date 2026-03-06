@@ -24,7 +24,7 @@ import { getCompensatedCenter } from "../../utils/map/geoUtils";
 import { useInfraData } from "../../hooks/useInfraData";
 import type { GroundTrackPoint } from "../../layers/OrbitalLayer";
 
-// Pick the map adapter at module init time based on the build-time env var.
+// Pre-load both adapters so React doesn't re-suspend when toggling Globe mode.
 // react-map-gl v8 bakes the GL library into the entry point, so we lazy-load
 // the correct adapter rather than using the removed `mapLib` prop.
 const _mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -32,9 +32,9 @@ const _enableMapbox = import.meta.env.VITE_ENABLE_MAPBOX !== 'false';
 const _isValidToken = !!_mapboxToken && _mapboxToken.startsWith('pk.');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MapComponent: React.ComponentType<any> = (_enableMapbox && _isValidToken)
-  ? lazy(() => import("./MapboxAdapter"))
-  : lazy(() => import("./MapLibreAdapter"));
+const MapboxAdapterLazy: React.ComponentType<any> = lazy(() => import("./MapboxAdapter"));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MapLibreAdapterLazy: React.ComponentType<any> = lazy(() => import("./MapLibreAdapter"));
 
 // DeckGLOverlay is defined inside each map adapter (MapLibreAdapter / MapboxAdapter)
 // so that useControl is always called within the correct react-map-gl endpoint context.
@@ -165,7 +165,14 @@ export function OrbitalMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [enable3d, setEnable3d] = useState(false);
   const mapToken = _enableMapbox && _isValidToken ? _mapboxToken : undefined;
-  const mapStyle = mapToken
+
+  // Globe mode always uses MapLibre — Mapbox Globe blocks CustomLayerInterface
+  // which is required by MapboxOverlay for interleaved rendering. MapLibre globe
+  // is fully supported by deck.gl (confirmed in @deck.gl/mapbox limitations docs).
+  // Mercator uses Mapbox when a valid token is present for premium basemap quality.
+  const MapComponent = (globeMode || !mapToken) ? MapLibreAdapterLazy : MapboxAdapterLazy;
+
+  const mapStyle = (mapToken && !globeMode)
     ? "mapbox://styles/mapbox/standard"
     : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
@@ -374,6 +381,9 @@ export function OrbitalMap({
   // This ensures that when the "Nuclear Remount" happens, all effects re-synchronize
   // correctly with the fresh map instance.
   useEffect(() => {
+    // Null out refs so stale instances aren't used after the adapter unmounts.
+    // react-map-gl handles GL context destruction internally on unmount — do not
+    // call map.remove() here as it races with react-map-gl's own cleanup.
     setMapLoaded(false);
     mapInstanceRef.current = null;
     overlayRef.current = null;

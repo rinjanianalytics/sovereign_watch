@@ -36,7 +36,9 @@ export function useMapCamera({
     if (!map || typeof map.setProjection !== "function") return;
 
     const applyProjection = () => {
-      const isMapbox = !!mapToken;
+      // Globe mode always uses MapLibre adapter (regardless of token presence).
+      // MapLibre requires the object form { type: 'globe' }; Mapbox uses a bare string.
+      const isMapbox = !!mapToken && !globeMode;
       if (globeMode) {
         // Globe and 3D terrain/fog often conflict visually or performance-wise.
         // Force 2D mode when entering Globe view.
@@ -128,7 +130,8 @@ export function useMapCamera({
     const SKY_LAYER_ID = "tactical-sky-atmosphere";
 
     const sync3D = () => {
-      const isMapbox = !!mapToken;
+      // Globe always runs on MapLibre — token presence alone doesn't mean Mapbox.
+      const isMapbox = !!mapToken && !globeMode;
 
       // ── Terrain (Mapbox only) ──────────────────────────────────────────
       if (enable3d) {
@@ -203,7 +206,7 @@ export function useMapCamera({
     if (!mapRef.current || !map) return;
     if (mode === "2d") {
       setEnable3d(false);
-      // Reset projection to flat mercator
+      // Reset projection to flat mercator (switching back to Mapbox adapter)
       try {
         (map as any).setProjection(
           mapToken ? "mercator" : { type: "mercator" },

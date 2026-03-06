@@ -1,21 +1,47 @@
-# Release - v0.18.1 - Sovereign Glass Update
+# Release - v0.18.2 - Globe Mode Rendering Fix
 
-Sovereign Watch v0.18.1 is a dedicated UI and aesthetic refinement release. We've taken the "Sovereign Glass" design language introduced in the Orbital mode and applied it universally across the entire Tactical HUD. Expect tighter padding, refined glassmorphism, eliminated harsh drop-shadows, and consistently styled tactical map controls.
+## Summary
 
-### Key Features
+This patch release resolves a series of interconnected bugs that caused Deck.gl layers to go blank in Globe mode when a Mapbox API token was present, and fixes a crash triggered when toggling Globe mode off.
 
-- **Project Logo & Favicon**: Added a new cyber-tactical eye and globe motif logo to the README and configured a perfectly symmetrical, text-less version as the application favicon.
-- **Global Glassmorphism**: Left sidebar widgets, top navigation bars, and historian controls now feature unified blur, border, and shadow properties.
-- **TopBar Streamlining**: A 10px height reduction gives the Tactical Map more vertical real estate while keeping critical indicators crisp and readable.
-- **Unified Map Controls**: Every interactive map control (2D/3D, Globe, Zoom, Rotate, Tilt) on both Tactical and Orbital views now glows perfectly with our signature green and indigo active states.
-- **Historian Widget Refit**: Fully integrated into the HUD style guide with perfectly padded pill toggles and drop-shadowed tabular typography.
+The root cause is a platform-level Mapbox limitation: **Mapbox Globe does not support `CustomLayerInterface`**, which is the mechanism `MapboxOverlay` uses to register with the Mapbox GL render pipeline. The fix routes Globe mode through the **MapLibre adapter**, which fully supports globe projection and Deck.gl interop, while preserving Mapbox (Standard style) for 2D and 3D Mercator views.
 
-### Upgrade Instructions
+Both the Tactical Map and Orbital Map receive the same fix.
 
-To apply the new UI styles:
+---
+
+## What Changed
+
+### Bug Fixes
+
+- **Globe mode now uses MapLibre adapter** (`TacticalMap.tsx`, `OrbitalMap.tsx`)
+  Both maps pre-load both adapters at startup and select between them at render time:
+  - Globe mode → MapLibre adapter (CartoDB Dark Matter style, full Deck.gl globe support)
+  - 2D/3D Mercator with token → Mapbox adapter (Mapbox Standard style)
+
+- **Fixed incorrect projection API form** (`useMapCamera.ts`)
+  `map.setProjection()` was passing the Mapbox-only string `"globe"` to a MapLibre instance. MapLibre requires the object form `{ type: "globe" }`. The hook now resolves the active adapter type from `globeMode` and applies the correct form.
+
+- **Fixed toggle-off crash** (`TacticalMap.tsx`, `OrbitalMap.tsx`)
+  A manual `map.remove()` call in the `globeMode` reset effect was racing with `react-map-gl`'s own internal cleanup, causing `Cannot read properties of undefined (reading 'destroy')`. The redundant call has been removed — react-map-gl fully owns GL context lifecycle management on unmount.
+
+---
+
+## Files Changed
+
+| File                                          | Change                                                   |
+| --------------------------------------------- | -------------------------------------------------------- |
+| `frontend/src/components/map/TacticalMap.tsx` | Dynamic adapter selection; mapStyle switch in Globe mode |
+| `frontend/src/components/map/OrbitalMap.tsx`  | Same fix mirrored to Orbital map                         |
+| `frontend/src/hooks/useMapCamera.ts`          | Correct projection API form for MapLibre vs Mapbox       |
+
+---
+
+## Upgrade Instructions
 
 ```bash
 git pull origin main
-docker compose build frontend
-docker compose up -d frontend
+docker compose up -d --build frontend
 ```
+
+No configuration changes, dependency changes, or database migrations required.
