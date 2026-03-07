@@ -1,3 +1,22 @@
+## [0.19.0] - 2026-03-07
+
+### Added
+
+- **Alerts Widget**: A new dropdown widget integrated into the TopBar for viewing the latest tactical alerts directly under the "ALERTS" pill.
+- **Expanded Alert Detection Engine**: The system now automatically detects and generates tactical alerts for critical conditions across all domains:
+  - **Aviation**: Emergency squawk codes (7500, 7600, 7700) and general emergency status flags.
+  - **Maritime**: AIS-SART distress signals (NavStatus 14), Not Under Command (NavStatus 2), Aground (NavStatus 6), and initial detections of military vessels or hazardous cargo.
+  - **Orbital**: Imminent passes (AOS within 30 minutes) of Intel-category satellites (military reconnaissance, SAR, EO constellations).
+- **Persistent Alert State Tracking**: Alerts are intelligently deduplicated per-entity and automatically clear when emergencies resolve, passes conclude, or entities leave the operational area.
+
+### Changed
+
+- **Alerts Widget Styling**: Removed the red outer glow from the alerts panel border in favor of a clean, standard shadow for a more refined look.
+
+### Fixed
+
+- **HUD Z-Indexing**: Explicitly set the TopBar zone's z-index to `z-50` in `MainHud` to ensure that dropdown widgets render correctly over the sidebars and map content.
+
 ## [0.18.2] - 2026-03-06
 
 ### Fixed

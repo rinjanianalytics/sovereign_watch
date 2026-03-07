@@ -241,6 +241,7 @@ The Tactical Map uses dynamic "thermal" gradients to visualize critical metadata
 | **RF Infrastructure Awareness**  | Comprehensive mapping of amateur radio repeater networks across the theater for immediate access to communication relays.                |
 | **JS8Call Signal Intelligence**  | Integrated HF digital mode (JS8) radio bridge and interactive HUD terminal for real-time tactical communications.                        |
 | **Projective Velocity Blending** | Physics-based kinematic rendering ensures fast-moving aircraft coast smoothly between delayed transponder pings.                         |
+| **Cross-Domain Tactical Alerts** | Automated detection and HUD notification of emergency squawks, maritime distress (AIS-SART), and imminent intel-satellite flyovers.      |
 | **Granular Filtering Matrix**    | Advanced HUD tools to strip away visual noise. Filter the theater by specific sub-classes (e.g., Drones or Military).                    |
 | **Time-Travel (Historian)**      | All positional data is written to TimescaleDB. Operators can replay tactical situations from hours or days ago locally.                  |
 

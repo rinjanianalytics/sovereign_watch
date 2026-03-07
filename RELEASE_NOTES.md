@@ -1,47 +1,18 @@
-# Release - v0.18.2 - Globe Mode Rendering Fix
+# Release - v0.19.0 - Alerts Engine & Widget Integration
 
-## Summary
+This release introduces the highly anticipated Alerts Widget alongside a comprehensive cross-domain alert detection engine. Operators now have immediate, structured access to critical tactical events directly from the central HUD TopBar. 
 
-This patch release resolves a series of interconnected bugs that caused Deck.gl layers to go blank in Globe mode when a Mapbox API token was present, and fixes a crash triggered when toggling Globe mode off.
-
-The root cause is a platform-level Mapbox limitation: **Mapbox Globe does not support `CustomLayerInterface`**, which is the mechanism `MapboxOverlay` uses to register with the Mapbox GL render pipeline. The fix routes Globe mode through the **MapLibre adapter**, which fully supports globe projection and Deck.gl interop, while preserving Mapbox (Standard style) for 2D and 3D Mercator views.
-
-Both the Tactical Map and Orbital Map receive the same fix.
-
----
-
-## What Changed
-
-### Bug Fixes
-
-- **Globe mode now uses MapLibre adapter** (`TacticalMap.tsx`, `OrbitalMap.tsx`)
-  Both maps pre-load both adapters at startup and select between them at render time:
-  - Globe mode → MapLibre adapter (CartoDB Dark Matter style, full Deck.gl globe support)
-  - 2D/3D Mercator with token → Mapbox adapter (Mapbox Standard style)
-
-- **Fixed incorrect projection API form** (`useMapCamera.ts`)
-  `map.setProjection()` was passing the Mapbox-only string `"globe"` to a MapLibre instance. MapLibre requires the object form `{ type: "globe" }`. The hook now resolves the active adapter type from `globeMode` and applies the correct form.
-
-- **Fixed toggle-off crash** (`TacticalMap.tsx`, `OrbitalMap.tsx`)
-  A manual `map.remove()` call in the `globeMode` reset effect was racing with `react-map-gl`'s own internal cleanup, causing `Cannot read properties of undefined (reading 'destroy')`. The redundant call has been removed — react-map-gl fully owns GL context lifecycle management on unmount.
-
----
-
-## Files Changed
-
-| File                                          | Change                                                   |
-| --------------------------------------------- | -------------------------------------------------------- |
-| `frontend/src/components/map/TacticalMap.tsx` | Dynamic adapter selection; mapStyle switch in Globe mode |
-| `frontend/src/components/map/OrbitalMap.tsx`  | Same fix mirrored to Orbital map                         |
-| `frontend/src/hooks/useMapCamera.ts`          | Correct projection API form for MapLibre vs Mapbox       |
-
----
+- **Alerts Widget**: A new dropdown widget integrated into the TopBar for viewing the latest tactical alerts directly under the "ALERTS" pill.
+- **Cross-Domain Alert Detection**: The engine now actively monitors and triggers alerts for:
+  - **Aviation**: Emergency squawks (7500/7600/7700) and distress statuses.
+  - **Maritime**: AIS-SART distress, vessels aground or not under command, and high-interest targets (military, hazardous cargo).
+  - **Orbital**: Approaching intel-category satellites with an AOS under 30 minutes.
+- **Intelligent Deduplication**: The alert system tracks state per-entity, ensuring operators aren't overwhelmed with duplicate warnings while reliably re-alerting if an emergency clears and returns.
+- **HUD Z-Indexing Fix**: Resolves an issue where dropdown menus could be obscured by sidebars due to stacking context overlaps, ensuring complete visibility of crucial HUD elements.
+- **Refined Styling**: Cleaned up the alerts widget border glow for a sleeker presentation.
 
 ## Upgrade Instructions
-
-```bash
-git pull origin main
-docker compose up -d --build frontend
-```
-
-No configuration changes, dependency changes, or database migrations required.
+To apply these changes:
+1. `git pull origin main`
+2. `docker compose build frontend`
+3. `docker compose up -d frontend`
