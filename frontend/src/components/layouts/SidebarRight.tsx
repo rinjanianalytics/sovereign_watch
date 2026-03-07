@@ -5,6 +5,7 @@ import { PolarPlotWidget } from '../widgets/PolarPlotWidget';
 import { Crosshair, Map as MapIcon, Network, Radio, Shield, Terminal } from 'lucide-react';
 import { TimeTracked } from './TimeTracked';
 import { PayloadInspector } from '../widgets/PayloadInspector';
+import { AnalysisWidget } from '../widgets/AnalysisWidget';
 import { useMissionLocation } from '../../hooks/useMissionLocation';
 import { usePassPredictions } from '../../hooks/usePassPredictions';
 import { satAzEl } from '../../utils/map/geoUtils';
@@ -934,7 +935,10 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
       </div>
 
       {/* 3. Footer Actions */}
-      <div className="p-3 border border-t-0 border-tactical-border bg-black/40 backdrop-blur-md rounded-b-sm">
+      <div className="p-3 border border-t-0 border-tactical-border bg-black/40 backdrop-blur-md rounded-b-sm flex flex-col gap-2">
+        {/* AI Analyst */}
+        <AnalysisWidget uid={entity.uid} accentColor={accentColor} />
+
         <button
           onClick={() => setShowInspector(true)}
           className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded group transition-all"
