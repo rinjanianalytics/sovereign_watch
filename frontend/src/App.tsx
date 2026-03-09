@@ -67,12 +67,17 @@ function App() {
   const {
     stationsRef: js8StationsRef,
     ownGridRef: js8OwnGridRef,
+    kiwiNodeRef: js8KiwiNodeRef,
     stations: js8Stations,
     logEntries: js8LogEntries,
     statusLine: js8StatusLine,
-    connected: js8BridgeConnected,
-    js8Connected,
+    connected: js8Connected,
+    js8Connected: js8CallConnected,
+    kiwiConnecting: js8KiwiConnecting,
     activeKiwiConfig: js8ActiveKiwiConfig,
+    js8Mode,
+    sendMessage: js8SendMessage,
+    sendAction: js8SendAction,
   } = useJS8Stations();
 
   // Map Actions (Search, FlyTo)
@@ -540,9 +545,11 @@ function App() {
             js8Stations={js8Stations}
             js8LogEntries={js8LogEntries}
             js8StatusLine={js8StatusLine}
-            js8BridgeConnected={js8BridgeConnected}
             js8Connected={js8Connected}
+            js8KiwiConnecting={js8KiwiConnecting}
             js8ActiveKiwiConfig={js8ActiveKiwiConfig}
+            sendMessage={js8SendMessage}
+            sendAction={js8SendAction}
           />
         ) : viewMode === 'ORBITAL' ? (
           <OrbitalSidebarLeft
@@ -610,6 +617,7 @@ function App() {
             js8StationsRef={js8StationsRef}
             ownGridRef={js8OwnGridRef}
             rfSitesRef={rfSitesRef}
+            kiwiNodeRef={js8KiwiNodeRef}
             showRepeaters={filters.showRepeaters}
             repeatersLoading={repeatersLoading}
           />
@@ -667,7 +675,18 @@ function App() {
         />
       ) : (
         <div className="w-full h-full pt-14 overflow-hidden bg-slate-950">
-          <RadioTerminal />
+          <RadioTerminal 
+            stations={js8Stations}
+            logEntries={js8LogEntries}
+            statusLine={js8StatusLine}
+            connected={js8Connected}
+            js8Connected={js8CallConnected}
+            kiwiConnecting={js8KiwiConnecting}
+            activeKiwiConfig={js8ActiveKiwiConfig}
+            js8Mode={js8Mode}
+            sendMessage={js8SendMessage}
+            sendAction={js8SendAction}
+          />
         </div>
       )}
     </MainHud>
