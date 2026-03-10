@@ -111,35 +111,47 @@ export const TopBar: React.FC<TopBarProps> = ({
             </div>
             {/* Center Area - View Mode Toggle / Telemetry cluster */}
             <div className="ml-12 mr-auto hidden items-center gap-6 xl:flex relative z-10">
-                <div className="flex items-center gap-2 px-2.5 py-1 bg-black/30 backdrop-blur-sm border border-white/5 rounded-full shadow-inner">
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-black/30 backdrop-blur-sm border border-white/5 rounded-full shadow-inner" role="tablist" aria-label="View Modes">
                     <button
+                        role="tab"
+                        aria-selected={viewMode === 'TACTICAL'}
+                        aria-label="Tactical View"
+                        title="Tactical View"
                         onClick={() => onViewChange?.('TACTICAL')}
-                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 ${viewMode === 'TACTICAL'
+                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 focus-visible:ring-1 focus-visible:ring-hud-green outline-none ${viewMode === 'TACTICAL'
                             ? 'bg-hud-green/20 text-hud-green border border-hud-green/50 shadow-[0_0_15px_rgba(0,255,65,0.3)] backdrop-blur-md'
                             : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'
                             }`}
                     >
-                        <Globe size={14} strokeWidth={2.5} className={viewMode === 'TACTICAL' ? 'drop-shadow-[0_0_8px_rgba(0,255,65,0.8)]' : ''} />
+                        <Globe size={14} strokeWidth={2.5} aria-hidden="true" className={viewMode === 'TACTICAL' ? 'drop-shadow-[0_0_8px_rgba(0,255,65,0.8)]' : ''} />
                         <span className={viewMode === 'TACTICAL' ? 'block drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]' : 'hidden'}>TACTICAL</span>
                     </button>
                     <button
+                        role="tab"
+                        aria-selected={viewMode === 'ORBITAL'}
+                        aria-label="Orbital View"
+                        title="Orbital View"
                         onClick={() => onViewChange?.('ORBITAL')}
-                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 ${viewMode === 'ORBITAL'
+                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 focus-visible:ring-1 focus-visible:ring-purple-400 outline-none ${viewMode === 'ORBITAL'
                             ? 'bg-purple-500/20 text-purple-300 border border-purple-400/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] backdrop-blur-md'
                             : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'
                             }`}
                     >
-                        <Satellite size={14} strokeWidth={2.5} className={viewMode === 'ORBITAL' ? 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : ''} />
+                        <Satellite size={14} strokeWidth={2.5} aria-hidden="true" className={viewMode === 'ORBITAL' ? 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : ''} />
                         <span className={viewMode === 'ORBITAL' ? 'block drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]' : 'hidden'}>ORBITAL</span>
                     </button>
                     <button
+                        role="tab"
+                        aria-selected={viewMode === 'RADIO'}
+                        aria-label="Radio View"
+                        title="Radio View"
                         onClick={() => onViewChange?.('RADIO')}
-                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 ${viewMode === 'RADIO'
+                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black tracking-widest transition-all duration-300 focus-visible:ring-1 focus-visible:ring-indigo-500 outline-none ${viewMode === 'RADIO'
                             ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.4)] backdrop-blur-md'
                             : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'
                             }`}
                     >
-                        <Radio size={14} strokeWidth={2.5} className={viewMode === 'RADIO' ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''} />
+                        <Radio size={14} strokeWidth={2.5} aria-hidden="true" className={viewMode === 'RADIO' ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''} />
                         <span className={viewMode === 'RADIO' ? 'block drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]' : 'hidden'}>RADIO</span>
                     </button>
                 </div>
@@ -171,7 +183,11 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="h-6 w-[1px] bg-white/10" />
 
                 {/* Status Icons Bar */}
-                <div className="flex items-center gap-2 px-2.5 py-1 bg-black/30 backdrop-blur-sm border border-white/5 rounded-lg shadow-inner">
+                <div
+                    role="toolbar"
+                    aria-label="Map Toggles"
+                    className="flex items-center gap-2 px-2.5 py-1 bg-black/30 backdrop-blur-sm border border-white/5 rounded-lg shadow-inner"
+                >
                     {/* Core Status */}
                     <div className="flex items-center gap-2 mr-3 px-2 py-0.5 bg-hud-green/10 border border-hud-green/20 rounded-md shadow-[0_0_10px_rgba(0,255,65,0.1)]" title="Core System: ONLINE">
                         <Server size={14} className="text-hud-green drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]" />
@@ -185,10 +201,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                     {onToggleReplay && (
                         <button
                             onClick={onToggleReplay}
-                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 ${isReplayMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
+                            aria-label="Toggle Simulation Replay"
+                            aria-pressed={isReplayMode}
+                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:ring-1 focus-visible:ring-amber-500 outline-none ${isReplayMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
                             title={`Simulation Replay: ${isReplayMode ? 'RUNNING' : 'STANDBY'}`}
                         >
-                            <PlayCircle size={15} className={isReplayMode ? 'animate-spin-slow drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' : ''} />
+                            <PlayCircle size={15} aria-hidden="true" className={isReplayMode ? 'animate-spin-slow drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' : ''} />
                         </button>
                     )}
 
@@ -196,10 +214,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                     {onToggleTerminator && (
                         <button
                             onClick={onToggleTerminator}
-                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 ${showTerminator ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
+                            aria-label="Toggle Terminator Overlay"
+                            aria-pressed={showTerminator}
+                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:ring-1 focus-visible:ring-indigo-500 outline-none ${showTerminator ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
                             title={`Terminator (Day/Night) Overlay: ${showTerminator ? 'ACTIVE' : 'STANDBY'}`}
                         >
-                            <Moon size={15} className={showTerminator ? 'drop-shadow-[0_0_5px_rgba(99,102,241,0.6)]' : ''} />
+                            <Moon size={15} aria-hidden="true" className={showTerminator ? 'drop-shadow-[0_0_5px_rgba(99,102,241,0.6)]' : ''} />
                         </button>
                     )}
 
@@ -207,10 +227,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                     {onToggleHistoryTails && (
                         <button
                             onClick={onToggleHistoryTails}
-                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 ${showHistoryTails ? 'bg-hud-green/20 text-hud-green border border-hud-green/40 shadow-[0_0_8px_rgba(0,255,65,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
+                            aria-label="Toggle History Trails"
+                            aria-pressed={showHistoryTails}
+                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:ring-1 focus-visible:ring-hud-green outline-none ${showHistoryTails ? 'bg-hud-green/20 text-hud-green border border-hud-green/40 shadow-[0_0_8px_rgba(0,255,65,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
                             title={`History Trails: ${showHistoryTails ? 'ACTIVE' : 'STANDBY'}`}
                         >
-                            <History size={15} className={showHistoryTails ? 'drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]' : ''} />
+                            <History size={15} aria-hidden="true" className={showHistoryTails ? 'drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]' : ''} />
                         </button>
                     )}
 
@@ -218,10 +240,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                     {onToggleVelocityVectors && (
                         <button
                             onClick={onToggleVelocityVectors}
-                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 ${showVelocityVectors ? 'bg-hud-green/20 text-hud-green border border-hud-green/40 shadow-[0_0_8px_rgba(0,255,65,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
+                            aria-label="Toggle Velocity Projections"
+                            aria-pressed={showVelocityVectors}
+                            className={`p-1 rounded-md transition-all duration-200 hover:scale-105 active:scale-95 focus-visible:ring-1 focus-visible:ring-hud-green outline-none ${showVelocityVectors ? 'bg-hud-green/20 text-hud-green border border-hud-green/40 shadow-[0_0_8px_rgba(0,255,65,0.3)]' : 'text-white/30 hover:bg-white/10 hover:text-white/80 border border-transparent'}`}
                             title={`Velocity Projections: ${showVelocityVectors ? 'ACTIVE' : 'STANDBY'}`}
                         >
-                            <MoveVertical size={15} className={showVelocityVectors ? 'drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]' : ''} />
+                            <MoveVertical size={15} aria-hidden="true" className={showVelocityVectors ? 'drop-shadow-[0_0_5px_rgba(0,255,65,0.5)]' : ''} />
                         </button>
                     )}
                 </div>
@@ -233,16 +257,18 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="flex items-center px-1 relative">
                     <button
                         onClick={onAlertsClick}
-                        className={`group relative flex items-center gap-2 rounded-full px-3 py-1 transition-all duration-300 backdrop-blur-md shadow-lg ${alertsCount > 0
+                        aria-label={alertsCount > 0 ? `${alertsCount} Active Alerts` : "Alerts"}
+                        aria-haspopup="dialog"
+                        className={`group relative flex items-center gap-2 rounded-full px-3 py-1 transition-all duration-300 backdrop-blur-md shadow-lg focus-visible:ring-1 focus-visible:ring-alert-red outline-none ${alertsCount > 0
                             ? 'bg-alert-red/20 shadow-[0_0_15px_rgba(255,0,0,0.3)] ring-1 ring-alert-red/60 hover:bg-alert-red/30'
                             : 'bg-black/30 ring-1 ring-white/10 hover:bg-black/50 hover:ring-white/20 hover:cursor-pointer cursor-default'
                             }`}
                         title={alertsCount > 0 ? `${alertsCount} Active Alerts - Click to view` : "No Active Alerts - Click to view"}
                     >
                         {alertsCount > 0 ? (
-                            <ShieldAlert size={15} className="text-alert-red animate-pulse drop-shadow-[0_0_8px_rgba(255,0,0,0.8)]" />
+                            <ShieldAlert size={15} aria-hidden="true" className="text-alert-red animate-pulse drop-shadow-[0_0_8px_rgba(255,0,0,0.8)]" />
                         ) : (
-                            <ShieldCheck size={15} className="text-white/40" />
+                            <ShieldCheck size={15} aria-hidden="true" className="text-white/40" />
                         )}
                         <span className={`font-mono text-[10px] font-bold tracking-widest ${alertsCount > 0 ? "text-alert-red drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "text-white/40 group-hover:text-white/60"
                             }`}>
