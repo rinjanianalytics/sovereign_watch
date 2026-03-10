@@ -18,7 +18,7 @@ export function useRFSites(
   missionLat: number,
   missionLon: number,
   radiusNm: number = DEFAULT_RADIUS_NM,
-  service?: RFService,
+  services?: string[],
   modes?: RFMode[],
   emcomm_only?: boolean
 ): UseRFSitesResult {
@@ -27,25 +27,26 @@ export function useRFSites(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const lastFetchRef = useRef<{ lat: number; lon: number } | null>(null);
+  const lastFetchRef = useRef<{ lat: number; lon: number; radiusNm?: number; servicesStr?: string; modeStr?: string; emcommStr?: string } | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
 
     const modeStr = modes && modes.length > 0 ? modes.sort().join(",") : "all";
-    const serviceStr = service || "all";
+    const servicesStr = services && services.length > 0 ? services.sort().join(",") : "all";
     const emcommStr = emcomm_only ? "true" : "false";
 
-    const CACHE_KEY = `rf_sites_cache_${missionLat.toFixed(2)}_${missionLon.toFixed(2)}_${serviceStr}_${modeStr}_${emcommStr}`;
+    const CACHE_KEY = `rf_sites_cache_v2_${missionLat.toFixed(2)}_${missionLon.toFixed(2)}_${radiusNm}_${servicesStr}_${modeStr}_${emcommStr}`;
     const CACHE_TS_KEY = `${CACHE_KEY}_ts`;
     const CACHE_TTL = 3600 * 1000; // 1 hour
 
-    // Skip if the mission centre hasn't moved significantly
+    // Skip if the mission centre hasn't moved significantly AND filters haven't changed
     const last = lastFetchRef.current;
     if (last) {
       const dLat = Math.abs(missionLat - last.lat);
       const dLon = Math.abs(missionLon - last.lon);
-      if (dLat < REFETCH_THRESHOLD_DEG && dLon < REFETCH_THRESHOLD_DEG) return;
+      const filtersMatch = last.servicesStr === servicesStr && last.modeStr === modeStr && last.emcommStr === emcommStr && last.radiusNm === radiusNm;
+      if (dLat < REFETCH_THRESHOLD_DEG && dLon < REFETCH_THRESHOLD_DEG && filtersMatch) return;
     }
 
     let cancelled = false;
@@ -63,7 +64,7 @@ export function useRFSites(
           rfSitesRef.current = parsed;
           setRfSites(parsed);
           setLoading(false);
-          lastFetchRef.current = { lat: missionLat, lon: missionLon };
+          lastFetchRef.current = { lat: missionLat, lon: missionLon, radiusNm, servicesStr, modeStr, emcommStr };
           return;
         }
       } catch (e) {
@@ -73,11 +74,15 @@ export function useRFSites(
       // 2. Fetch fresh
       try {
         let url = `${API_BASE}?lat=${missionLat}&lon=${missionLon}&radius_nm=${radiusNm}`;
-        if (service) url += `&service=${service}`;
+        if (services && services.length > 0) {
+          for (const s of services) {
+            url += `&services=${s}`;
+          }
+        }
         if (emcomm_only) url += `&emcomm_only=true`;
         if (modes && modes.length > 0) {
           for (const m of modes) {
-             url += `&modes=${m}`;
+            url += `&modes=${m}`;
           }
         }
 
@@ -89,7 +94,7 @@ export function useRFSites(
           const results = data.results ?? [];
           rfSitesRef.current = results;
           setRfSites(results);
-          lastFetchRef.current = { lat: missionLat, lon: missionLon };
+          lastFetchRef.current = { lat: missionLat, lon: missionLon, radiusNm, servicesStr, modeStr, emcommStr };
 
           // Update cache
           localStorage.setItem(CACHE_KEY, JSON.stringify(results));
@@ -108,7 +113,7 @@ export function useRFSites(
     return () => {
       cancelled = true;
     };
-  }, [enabled, missionLat, missionLon, radiusNm, service, modes, emcomm_only]);
+  }, [enabled, missionLat, missionLon, radiusNm, services, modes, emcomm_only]);
 
   // Clear data when layer is disabled
   useEffect(() => {

@@ -111,6 +111,14 @@ async def get_ai_config():
         "available_models": AVAILABLE_AI_MODELS,
     }
 
+@router.get("/api/config/features")
+async def get_features_config():
+    """Return enabled functionality based on environment."""
+    return {
+        "repeaterbook_enabled": bool(os.getenv("REPEATERBOOK_API_TOKEN")),
+        "radioref_enabled": bool(os.getenv("RADIOREF_APP_KEY"))
+    }
+
 @router.post("/api/config/ai")
 async def set_ai_config(req: AIModelRequest):
     """Switch the active AI model used for track analysis."""

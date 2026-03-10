@@ -84,15 +84,15 @@ function App() {
   const [mapActions, setMapActions] = useState<import('./types').MapActions | null>(null);
 
   // Filter state with persistence (tactical map only)
-  const [filters, setFilters] = useState(() => {
+  const [filters, setFilters] = useState<Record<string, boolean | string | number | string[]>>(() => {
     const defaultFilters = {
       showAir: true,
       showSea: true,
       showHelicopter: true,
-      showMilitary: true,
-      showGovernment: true,
       showCommercial: true,
       showPrivate: true,
+      showMilitary: true,
+      showGovernment: true,
       showCargo: true,
       showTanker: true,
       showPassenger: true,
@@ -113,6 +113,11 @@ function App() {
       showSatSurveillance: true,
       showSatOther: true,
       showRepeaters: false,
+      showHam: true,
+      showNoaa: true,
+      showPublicSafety: true,
+      rfRadius: 300,
+      rfEmcommOnly: false,
       showCables: false,
       showLandingStations: false,
       cableOpacity: 0.6,
@@ -222,11 +227,21 @@ function App() {
   // Mission management state
   const [missionProps, setMissionProps] = useState<MissionProps | null>(null);
 
+  // Compute active services list
+  const activeServices: string[] = [];
+  if (filters.showHam !== false) activeServices.push('ham'); // Assuming 'ham' fetches both Ham & GMRS from backend implicitly
+  if (filters.showNoaa !== false) activeServices.push('noaa_nwr');
+  if (filters.showPublicSafety !== false) activeServices.push('public_safety');
+
   // RF infrastructure layer
   const { rfSitesRef, loading: repeatersLoading } = useRFSites(
-    filters.showRepeaters,
+    filters.showRepeaters as boolean,
     missionProps?.currentMission?.lat ?? 45.5152,
     missionProps?.currentMission?.lon ?? -122.6784,
+    (filters.rfRadius as number) || 300,
+    activeServices as any, // Will update hook signature next
+    (filters.modes as any) || undefined,
+    (filters.rfEmcommOnly as any) || undefined,
   );
 
   // Intel satellite pass predictions for orbital alerts
@@ -675,7 +690,7 @@ function App() {
         />
       ) : (
         <div className="w-full h-full pt-14 overflow-hidden bg-slate-950">
-          <RadioTerminal 
+          <RadioTerminal
             stations={js8Stations}
             logEntries={js8LogEntries}
             statusLine={js8StatusLine}

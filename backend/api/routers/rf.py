@@ -11,14 +11,14 @@ logger = logging.getLogger("SovereignWatch.RF")
 async def get_rf_sites(
     lat: float = Query(...),
     lon: float = Query(...),
-    radius_nm: float = Query(default=150.0, ge=1, le=1000),
-    service: str | None = Query(default=None),
+    radius_nm: float = Query(default=150.0, ge=1, le=2500),
+    services: list[str] = Query(default=[]),
     modes: list[str] = Query(default=[]),
     emcomm_only: bool = Query(default=False),
     source: str | None = Query(default=None),
 ):
     radius_m = radius_nm * 1852.0
-    cache_key = f"rf_sites:{lat:.2f}:{lon:.2f}:{int(radius_nm)}:{service}:{','.join(sorted(modes))}:{emcomm_only}:{source}"
+    cache_key = f"rf_sites:{lat:.2f}:{lon:.2f}:{int(radius_nm)}:{','.join(sorted(services))}:{','.join(sorted(modes))}:{emcomm_only}:{source}"
 
     if db.redis_client:
         cached = await db.redis_client.get(cache_key)
@@ -28,12 +28,12 @@ async def get_rf_sites(
     if not db.pool:
         raise HTTPException(status_code=503, detail="Database connection not available")
 
-    conditions = ["ST_DWithin(geom::geography, ST_MakePoint($2, $1)::geography, $3)"]
+    conditions = ["ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)"]
     params = [lat, lon, radius_m]
 
-    if service:
-        conditions.append(f"service = ${len(params)+1}")
-        params.append(service)
+    if services:
+        conditions.append(f"service = ANY(${len(params)+1}::text[])")
+        params.append(services)
 
     if modes:
         conditions.append(f"modes && ${len(params)+1}::text[]")
@@ -57,7 +57,7 @@ async def get_rf_sites(
             meta, fetched_at, updated_at
         FROM rf_sites
         WHERE {where}
-        ORDER BY geom <-> ST_MakePoint($2,$1)::geometry
+        ORDER BY geom <-> ST_SetSRID(ST_MakePoint($2,$1), 4326)::geometry
         LIMIT 5000
     """
 

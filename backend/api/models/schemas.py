@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 class AIModelRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     model_id: str = Field(..., description="LiteLLM model profile name")
 
 class AnalyzeRequest(BaseModel):

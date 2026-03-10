@@ -29,6 +29,9 @@ REPEATERBOOK_INTERVAL_H = int(os.getenv("RF_REPEATERBOOK_INTERVAL_H", "6"))
 ARD_INTERVAL_H          = int(os.getenv("RF_ARD_INTERVAL_H", "24"))
 NOAA_INTERVAL_H         = int(os.getenv("RF_NOAA_INTERVAL_H", "168"))
 
+RB_TOKEN = os.getenv("REPEATERBOOK_API_TOKEN", "")
+RR_KEY   = os.getenv("RADIOREF_APP_KEY", "")
+
 
 class RFPulseService:
     def __init__(self):
@@ -52,12 +55,6 @@ class RFPulseService:
 
         # Instantiate sources
         self.sources = [
-            RepeaterBookSource(
-                producer=self.producer,
-                redis_client=self.redis_client,
-                topic=TOPIC_OUT,
-                fetch_interval_h=REPEATERBOOK_INTERVAL_H,
-            ),
             ARDSource(
                 producer=self.producer,
                 redis_client=self.redis_client,
@@ -70,17 +67,31 @@ class RFPulseService:
                 topic=TOPIC_OUT,
                 fetch_interval_h=NOAA_INTERVAL_H,
             ),
-            RadioReferenceSource(
-                producer=self.producer,
-                redis_client=self.redis_client,
-                topic=TOPIC_OUT,
-                # RR is fetched on-demand via an internal mechanism or API,
-                # but we can set up a basic poller pattern if it needs to keep data fresh.
-                # However, for RadioReference it's typically user-driven or
-                # we just instantiate it to be available. We'll set a daily check if needed.
-                fetch_interval_h=24,
-            ),
         ]
+
+        if RB_TOKEN:
+            self.sources.append(
+                RepeaterBookSource(
+                    producer=self.producer,
+                    redis_client=self.redis_client,
+                    topic=TOPIC_OUT,
+                    fetch_interval_h=REPEATERBOOK_INTERVAL_H,
+                )
+            )
+        else:
+            logger.info("REPEATERBOOK_API_TOKEN not set, skipping RepeaterBook ingestion module.")
+            
+        if RR_KEY:
+            self.sources.append(
+                RadioReferenceSource(
+                    producer=self.producer,
+                    redis_client=self.redis_client,
+                    topic=TOPIC_OUT,
+                    fetch_interval_h=24,
+                )
+            )
+        else:
+            logger.info("RADIOREF_APP_KEY not set, skipping RadioReference ingestion module.")
 
     async def run(self):
         """Run all source loops concurrently."""

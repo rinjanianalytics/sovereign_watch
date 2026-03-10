@@ -1,30 +1,30 @@
-# Release - v0.21.0 - Radiant Beacon
+# Release - v0.22.0 - Radio Frequency Overhaul
 
 ## High-Level Summary
 
-This release focuses on hardening the **JS8Call Tactical Bridge** and introducing a premium visual identity for connected SDR nodes. By unifying the JS8 state management, we've eliminated synchronization lag between the map and the terminal, ensuring operators always have a consistent view of their radio status. The new "Radio Beacon" map icon provides high-fidelity visual feedback for active connections, while robust connection lifecycle fixes prevent the UI from locking up during intermittent network conditions.
+This release introduces a major architectural and visual overhaul of the **Radio Frequency (RF) Infrastructure** layer. Operators can now monitor multiple RF services simultaneously across an expanded 2,000 NM range. The update features a new **AOR Boundary Ring** for precise range visualization and a refined **Amber-Yellow UI theme** that standardizes RF controls across the HUD.
 
 ## Key Features
 
-- **Unified JS8 Telemetry**: The `useJS8Stations` hook now coordinates all JS8 and KiwiSDR state, providing a single source of truth for the HUD, Sidebar, and Map.
-- **Animated Radio Beacon**: A premium, multi-layered map icon for connected SDRs featuring pulsing cores, radiating signal waves, and breathing attention rings.
-- **Connection Robustness**: Added automatic state resets and a 15-second safety latch to connection attempts, ensuring the "Connect" interface reliably unlocks after failures or timeouts.
-- **Proportional Scaling**: The SDR beacon icon has been refined to better match existing tactical symbology, maintaining high visibility without crowding the operational area.
+- **Multi-Service Ingestion**: Concurrent tracking for Amateur Radio (Ham), NOAA Weather Radio (NWR), and Public Safety (RadioReference) networks.
+- **Tactical Range Ring**: A high-visibility, dashed amber ring on the map now represents the selected survey radius.
+- **Condensed UI Layout**: RF service toggles are now unified into a single horizontal row with high-contrast glowing indicators.
+- **Advanced Clustering**: RF map clusters now respect service types, ensuring distinct visual grouping even at global zoom levels.
+- **Expanded Polling Range**: Survey boundaries extended from 500 NM up to 2,000 NM with backend performance optimizations.
 
 ## Technical Details
 
-- **Refactored `useJS8Stations`**: Migrated scattered state into a central context-ready hook with cross-component bridge synchronization.
-- **Standardized Bridge Variable Naming**: Unified `bridgeConnected`, `kiwiConnecting`, and `sharedActiveKiwiConfig` across `RadioTerminal.tsx` and `JS8Widget.tsx`.
-- **Enhanced `useAnimationLoop`**: Added dedicated SVG-style signal layers to the Deck.gl rendering pipeline.
+- **Backend**: Implemented `migrate_rf_plus.sql` for optimized spatial indexing of RF sites.
+- **API**: Updated `/api/rf/sites` to accept multiple `services` parameters.
+- **Frontend**: Refactored `useRFSites` hook for improved caching and debouncing during rapid radius changes.
+- **Layers**: New `geodesicCircle` integration in `buildAOTLayers` for boundary rendering.
 
 ## Upgrade Instructions
 
-1. Pull the latest version of the `main` branch.
-2. Rebuild the frontend container:
-   ```bash
-   docker compose build frontend
-   ```
-3. Restart the Sovereign Watch stack:
-   ```bash
-   docker compose up -d
-   ```
+```bash
+# Pull latest changes
+git pull origin main
+
+# Rebuild and restart containers
+docker compose up -d --build
+```

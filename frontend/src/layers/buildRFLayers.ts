@@ -74,7 +74,7 @@ function clusterRFSites(sites: RFSite[], zoom: number) {
   for (const r of sites) {
     const gx = Math.floor(r.lon / gridSize);
     const gy = Math.floor(r.lat / gridSize);
-    const key = `${gx},${gy}`;
+    const key = `${gx},${gy},${r.service}`;
 
     const existing = clusterMap.get(key);
     if (existing) {
@@ -101,6 +101,9 @@ function clusterRFSites(sites: RFSite[], zoom: number) {
       individuals.push(c.representative);
     }
   }
+
+  // Sort clusters descending by count so smaller sub-clusters render on top
+  clusters.sort((a, b) => b.count - a.count);
 
   return { clusters, individuals };
 }
@@ -131,7 +134,7 @@ export function buildRFLayers(
         getPosition: (d: any) => [d.lon, d.lat, 0],
         getRadius: (d: any) => 10 + Math.min(d.count / 3, 6),
         radiusUnits: "pixels" as const,
-        getFillColor: [52, 211, 153, 40], // Muted Emerald alpha 40
+        getFillColor: (d: any) => rfSiteColor(d.representative, 40),
         stroked: false,
         filled: true,
         pickable: false,
@@ -146,7 +149,7 @@ export function buildRFLayers(
         getPosition: (d: any) => [d.lon, d.lat, 0],
         getRadius: (d: any) => 7 + Math.min(d.count / 5, 4),
         radiusUnits: "pixels" as const,
-        getFillColor: [52, 211, 153, 255], // Emerald core
+        getFillColor: (d: any) => rfSiteColor(d.representative, 255),
         stroked: true,
         getLineColor: [255, 255, 255, 220],
         getLineWidth: 1,
@@ -163,9 +166,9 @@ export function buildRFLayers(
         data: clusters,
         getPosition: (d: any) => [d.lon, d.lat, 0],
         getText: (d: any) => `${d.count}`,
-        getSize: 10,
+        getSize: 12,
         getColor: [255, 255, 255, 255],
-        getPixelOffset: [0, 1], // centre correction
+        getPixelOffset: [0, 0], // centre correction
         fontFamily: "monospace",
         fontWeight: "bold",
         billboard: true,

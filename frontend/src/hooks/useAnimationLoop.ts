@@ -151,6 +151,7 @@ export function useAnimationLoop({
   showRepeaters,
   predictedGroundTrackRef,
   observerRef,
+  currentMissionRef,
 }: UseAnimationLoopOptions): void {
   const lastFrameTimeRef = useRef<number>(Date.now());
   const rafRef = useRef<number>();
@@ -658,7 +659,7 @@ export function useAnimationLoop({
       const filteredSatellites: CoTEntity[] = [];
       for (const [uid, sat] of satellitesRef.current.entries()) {
         if (!filters?.showSatellites) continue;
-        
+
         const constellation = sat.detail?.constellation as string | undefined;
         if (constellation && filters?.[`showConstellation_${constellation}`] === false) continue;
 
@@ -774,11 +775,11 @@ export function useAnimationLoop({
         // Live Sidebar Update
         if (selectedEntity?.uid === uid) {
           const liveSatCount = {
-              ...sat,
-              lat: visual.lat,
-              lon: visual.lon,
-              altitude: visual.alt,
-              course: dr ? ((dr.blendCourseRad * 180) / Math.PI + 360) % 360 : sat.course
+            ...sat,
+            lat: visual.lat,
+            lon: visual.lon,
+            altitude: visual.alt,
+            course: dr ? ((dr.blendCourseRad * 180) / Math.PI + 360) % 360 : sat.course
           };
           onEntityLiveUpdate?.(liveSatCount);
         }
@@ -840,7 +841,7 @@ export function useAnimationLoop({
         // High-tech Radio Beacon design
         const pulse = (Math.sin(now / 400) + 1) / 2; // 0 to 1
         const breathing = (Math.sin(now / 1500) + 1) / 2; // slow breath
-        
+
         // 1. Outer broad glow (Radiating wave)
         kiwiLayers.push(
           new ScatterplotLayer({
@@ -937,7 +938,19 @@ export function useAnimationLoop({
         }),
 
         // 0. AOT Boundaries
-        ...buildAOTLayers(aotShapes, filters, globeMode, observerRef?.current),
+        ...buildAOTLayers(
+          aotShapes,
+          filters,
+          globeMode,
+          observerRef?.current,
+          currentMissionRef.current
+            ? {
+              lat: currentMissionRef.current.lat,
+              lon: currentMissionRef.current.lon,
+              radiusKm: (filters?.rfRadius || 300) * 1.852,
+            }
+            : null,
+        ),
 
         // 1. Repeater infrastructure (rendered below entity icons for context)
         ...repeaterLayers,

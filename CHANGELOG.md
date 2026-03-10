@@ -1,3 +1,19 @@
+## [0.22.0] - 2026-03-09
+
+### Added
+
+- **RF Network Refactor**: Complete architectural overhaul of the Radio Frequency ingestion pipeline, now supporting concurrent polling for multiple service types (Ham/GMRS, NOAA Weather Radio, and Public Safety/RadioReference).
+- **AOR Boundary Ring**: Implemented a dynamic, dashed amber horizon ring on the Tactical Map that scales with the selected RF survey radius, providing instant situational awareness of hardware range.
+- **Service-Aware Clustering**: Refined map clustering logic to group RF sites by service type, maintaining distinct color-coding (Emerald/Sky/Amber) for high-density visualization.
+- **RF Range Expansion**: Extended the operational range limits for RF surveys, now supporting presets up to 2,000 NM with optimized backend query logic.
+
+### Changed
+
+- **RF UI Standardization**: Migrated the RF Infrastructure suite to a high-contrast amber-yellow theme, differentiating polling status from tactical entities.
+- **Condensed Service Filters**: Refactored RF sub-filters into a single horizontal row of high-contrast glowing buttons for better vertical space efficiency.
+- **Viewport Optimization**: Increased the Map Layers panel's maximum height from 40vh to 60vh to prevent layout cramping when multiple service suites are expanded.
+- **Ref Sites Caching**: Implemented a more aggressive caching strategy in `useRFSites` with TTL and movement-based refetch thresholds to reduce API load.
+
 ## [0.21.0] - 2026-03-07
 
 ### Added

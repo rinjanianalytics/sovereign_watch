@@ -276,20 +276,16 @@ export function TacticalMap({
       const dataReady = rfSitesRef?.current && rfSitesRef.current.length > 0;
       const loadFinished = !repeatersLoading;
 
-      // Notify if:
-      // 1. Data is ready (non-zero count)
-      // 2. OR loading has explicitly finished AFTER we already transitioned showRepeaters to true
-      // This prevents the "0 repeaters" flash during the initial frame of a toggle.
-      if (!infraNotifiedRef.current.notifiedRepeaters) {
-        if (dataReady || (loadFinished && infraNotifiedRef.current.showRepeaters === true)) {
-          const count = rfSitesRef?.current?.length || 0;
-          onEvent?.({
-            message: `RF_NET: ${count} amateur radio repeaters active in regional sector`,
-            type: "new",
-            entityType: "infra",
-          });
-          infraNotifiedRef.current.notifiedRepeaters = true;
-        }
+      // Notify if loading has explicitly finished AFTER we already transitioned showRepeaters to true
+      // This prevents logging 0 when the API is still fetching.
+      if (!infraNotifiedRef.current.notifiedRepeaters && loadFinished) {
+        const count = rfSitesRef?.current?.length || 0;
+        onEvent?.({
+          message: `RF_NET: ${count} RF stations active in regional sector`,
+          type: "new",
+          entityType: "infra",
+        });
+        infraNotifiedRef.current.notifiedRepeaters = true;
       }
     } else {
       if (prevRepeaters === true) {

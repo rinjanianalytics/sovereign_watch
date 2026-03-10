@@ -63,6 +63,24 @@
     - **Tactical Map (UI)**: [http://localhost](http://localhost)
     - **Fusion API**: [http://localhost/api/docs](http://localhost/api/docs)
 
+### Upgrading an Existing Installation
+
+When pulling new updates that include database schema changes (like the RF Plus Overhaul), you must apply the database migrations to your pre-existing database. Fresh installations do not need to do this.
+
+1.  **Pull Latest Code and Rebuild**:
+
+    ```bash
+    git pull
+    docker compose up -d --build
+    ```
+
+2.  **Apply Migrations**:
+    Run the specific migration script against your running TimescaleDB container. For example, to apply the RF Plus Overhaul tables:
+
+    ```bash
+    docker compose exec -T timescaledb psql -U postgres -d sovereign_watch < ./backend/db/migrate_rf_plus.sql
+    ```
+
 ## ⚠️ Disclaimer & Liability
 
 > [!IMPORTANT]
