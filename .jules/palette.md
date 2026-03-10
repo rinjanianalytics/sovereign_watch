@@ -19,3 +19,7 @@
 ## 2024-03-09 - Ensure Custom Focus Rings Hide Default Outlines
 **Learning:** When using custom `focus-visible:ring-1` classes for accessibility styling on buttons and inputs, the default browser focus ring (usually a thick blue outline) often still appears alongside it, looking unpolished.
 **Action:** Always pair `focus-visible:ring-1` with `outline-none` so that only the custom focus styling is shown to keyboard users.
+
+## 2025-03-09 - Icon-Only TopBar Toggle Buttons Require Explicit ARIA
+**Learning:** Icon-only buttons in global navigation elements (like `TopBar.tsx` view modes and toggle switches) provide visual feedback (e.g., color changes, shadows) but are invisible to screen readers without explicit `aria-label` and `aria-pressed` or `title` attributes. Furthermore, without `focus-visible:ring-*` and `outline-none`, keyboard navigation lacks clear indicators in high-density tactical interfaces.
+**Action:** Always ensure that icon-only toggle buttons in navigation bars include `aria-label`, `title`, and stateful attributes like `aria-pressed` or `aria-expanded`. Apply `aria-hidden="true"` to internal SVG icons to prevent redundant announcements, and use consistent `focus-visible:ring-1` styling.
