@@ -12,7 +12,7 @@ import type { MapRef } from "react-map-gl/maplibre";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { CoTEntity, JS8Station, MissionProps, RepeaterStation } from "../../types";
+import { CoTEntity, JS8Station, MissionProps, RFSite } from "../../types";
 import { MapTooltip } from "./MapTooltip";
 import { MapContextMenu } from "./MapContextMenu";
 import { SaveLocationForm } from "./SaveLocationForm";
@@ -87,8 +87,8 @@ interface TacticalMapProps {
   onEntityLiveUpdate?: (entity: CoTEntity) => void;
   js8StationsRef?: MutableRefObject<Map<string, JS8Station>>;
   ownGridRef?: MutableRefObject<string>;
+  rfSitesRef?: MutableRefObject<RFSite[]>;
   kiwiNodeRef?: MutableRefObject<{ lat: number; lon: number; host: string } | null>;
-  repeatersRef?: MutableRefObject<RepeaterStation[]>;
   showRepeaters?: boolean;
   repeatersLoading?: boolean;
 }
@@ -112,8 +112,8 @@ export function TacticalMap({
   onEntityLiveUpdate,
   js8StationsRef,
   ownGridRef,
+  rfSitesRef,
   kiwiNodeRef,
-  repeatersRef,
   showRepeaters,
   repeatersLoading,
 }: TacticalMapProps) {
@@ -273,7 +273,7 @@ export function TacticalMap({
 
     // 3. RF Repeaters Trigger
     if (currRepeaters) {
-      const dataReady = repeatersRef?.current && repeatersRef.current.length > 0;
+      const dataReady = rfSitesRef?.current && rfSitesRef.current.length > 0;
       const loadFinished = !repeatersLoading;
 
       // Notify if:
@@ -282,7 +282,7 @@ export function TacticalMap({
       // This prevents the "0 repeaters" flash during the initial frame of a toggle.
       if (!infraNotifiedRef.current.notifiedRepeaters) {
         if (dataReady || (loadFinished && infraNotifiedRef.current.showRepeaters === true)) {
-          const count = repeatersRef?.current?.length || 0;
+          const count = rfSitesRef?.current?.length || 0;
           onEvent?.({
             message: `RF_NET: ${count} amateur radio repeaters active in regional sector`,
             type: "new",
@@ -305,7 +305,7 @@ export function TacticalMap({
     infraNotifiedRef.current.showCables = currCables;
     infraNotifiedRef.current.showLandingStations = currLanding;
     infraNotifiedRef.current.showRepeaters = currRepeaters;
-  }, [filters?.showCables, filters?.showLandingStations, showRepeaters, cablesData, stationsData, onEvent, repeatersRef, repeatersLoading]);
+  }, [filters?.showCables, filters?.showLandingStations, showRepeaters, cablesData, stationsData, onEvent, rfSitesRef, repeatersLoading]);
 
   const countsRef = useRef({ air: 0, sea: 0, orbital: 0 });
   const currentMissionRef = useRef<{
@@ -460,8 +460,8 @@ export function TacticalMap({
     onFollowModeChange,
     js8StationsRef,
     ownGridRef,
+    rfSitesRef,
     kiwiNodeRef,
-    repeatersRef,
     showRepeaters,
   });
 

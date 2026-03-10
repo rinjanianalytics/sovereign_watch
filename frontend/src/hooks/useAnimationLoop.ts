@@ -1,12 +1,12 @@
 import { useEffect, useRef, MutableRefObject } from "react";
-import { CoTEntity, JS8Station, RepeaterStation } from "../types";
+import { CoTEntity, JS8Station, RFSite } from "../types";
 import { getCompensatedCenter, maidenheadToLatLon } from "../utils/map/geoUtils";
 import { getOrbitalLayers, GroundTrackPoint } from "../layers/OrbitalLayer";
 import { buildAOTLayers } from "../layers/buildAOTLayers";
 import { buildTrailLayers } from "../layers/buildTrailLayers";
 import { buildEntityLayers } from "../layers/buildEntityLayers";
 import { buildJS8Layers } from "../layers/buildJS8Layers";
-import { buildRepeaterLayers } from "../layers/buildRepeaterLayers";
+import { buildRFLayers } from "../layers/buildRFLayers";
 import { buildInfraLayers } from "../layers/buildInfraLayers";
 import { ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { getTerminatorLayer } from "../components/map/TerminatorLayer";
@@ -98,8 +98,8 @@ interface UseAnimationLoopOptions {
   onFollowModeChange: ((enabled: boolean) => void) | undefined;
   js8StationsRef?: MutableRefObject<Map<string, JS8Station>>;
   ownGridRef?: MutableRefObject<string>;
+  rfSitesRef?: MutableRefObject<RFSite[]>;
   kiwiNodeRef?: MutableRefObject<{ lat: number; lon: number; host: string } | null>;
-  repeatersRef?: MutableRefObject<RepeaterStation[]>;
   showRepeaters?: boolean;
   predictedGroundTrackRef?: MutableRefObject<GroundTrackPoint[]>;
   /** Observer position for the orbital AOI ring. radiusKm is the pass-prediction horizon. */
@@ -146,8 +146,8 @@ export function useAnimationLoop({
   onFollowModeChange,
   js8StationsRef,
   ownGridRef,
+  rfSitesRef,
   kiwiNodeRef,
-  repeatersRef,
   showRepeaters,
   predictedGroundTrackRef,
   observerRef,
@@ -811,9 +811,9 @@ export function useAnimationLoop({
 
       // Repeater infrastructure layers (ham radio repeaters)
       let repeaterLayers: any[] = [];
-      if (showRepeaters && repeatersRef && repeatersRef.current.length > 0) {
-        repeaterLayers = buildRepeaterLayers(
-          repeatersRef.current,
+      if (showRepeaters && rfSitesRef && rfSitesRef.current.length > 0) {
+        repeaterLayers = buildRFLayers(
+          rfSitesRef.current,
           globeMode,
           onEntitySelect,
           setHoveredEntity,
